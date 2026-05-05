@@ -3,10 +3,17 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 let _db: SupabaseClient | null = null;
 
+// Strip BOM (U+FEFF) and whitespace — env var values pasted from some editors
+// or dashboards arrive with a leading byte-order mark, which causes
+// "Cannot convert argument to a ByteString" when used in an HTTP header.
+function clean(val: string | undefined): string | undefined {
+  return val?.replace(/^﻿/, '').trim();
+}
+
 function connect(): SupabaseClient {
   if (_db) return _db;
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = clean(process.env.SUPABASE_URL);
+  const key = clean(process.env.SUPABASE_SERVICE_ROLE_KEY);
   if (!url) throw new Error('SUPABASE_URL is not configured');
   if (!key) throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured');
   _db = createClient(url, key);
