@@ -3,10 +3,16 @@ import { getOpenCompanyNeeds } from '../../../../lib/companyNeedStore';
 import { getActiveIngestedDrivers } from '../../../../lib/ingestedDriverStore';
 import { buildShortlist } from '../../../../lib/matchingEngine';
 import { createShortlist } from '../../../../lib/shortlistStore';
+import { requireRecruiterAuth } from '../../../../lib/recruiterAuth';
 import type { MatchNeed } from '../../../../lib/matchScore';
 import type { License } from '../../../../types/lead';
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  const auth = requireRecruiterAuth(req);
+  if (!auth.ok) {
+    return NextResponse.json(auth.body, { status: auth.status });
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -55,12 +61,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const result = buildShortlist(drivers, need);
 
-  let shortlistId: string;
+  let shortlistResult;
   try {
-    shortlistId = await createShortlist(needId, result);
+    shortlistResult = await createShortlist(needId, result);
   } catch {
     return NextResponse.json({ error: 'supabase_error' }, { status: 500 });
   }
 
-  return NextResponse.json({ shortlist_id: shortlistId, ...result });
+  const { shortlistId, entryIdsByDriverId } = shortlistResult;
+  const shortlisted = result.shortlisted.map((entry) => ({
+    ...entry,
+    shortlist_entry_id: entryIdsByDriverId[entry.driver.id] ?? null,
+  }));
+
+  return NextResponse.json({
+    shortlist_id:     shortlistId,
+    shortlisted,
+    rejected:         result.rejected,
+    totalCandidates:  result.totalCandidates,
+    totalShortlisted: result.totalShortlisted,
+    summary:          result.summary,
+  });
 }

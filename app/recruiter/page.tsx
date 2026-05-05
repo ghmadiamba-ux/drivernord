@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 
-// ─── API response types ───────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type ContactStatus = 'new' | 'contacted' | 'interested' | 'not_interested';
 
 interface NeedRow {
   id:                 string;
@@ -18,16 +20,17 @@ interface NeedRow {
 }
 
 interface MatchEntry {
+  shortlist_entry_id: string;
   driver: {
-    id:             string;
-    license:        string;
-    ykb:            string;
-    driverCard:     string;
-    location:       { region: string; willingToRelocate: boolean | null };
-    availability:   string;
-    domain:         string | null;
+    id:              string;
+    license:         string;
+    ykb:             string;
+    driverCard:      string;
+    location:        { region: string; willingToRelocate: boolean | null };
+    availability:    string;
+    domain:          string | null;
     shiftPreference: string | null;
-    contact:        { firstName: string; phone: string; email: string | null };
+    contact:         { firstName: string; phone: string; email: string | null };
   };
   score: {
     total:   number;
@@ -45,40 +48,104 @@ interface MatchResult {
   summary:          string;
 }
 
+interface LoadedEntry {
+  id:              string;
+  rank:            number;
+  match_score:     number;
+  flags:           string[];
+  summary:         string;
+  contact_status:  ContactStatus;
+  recruiter_note:  string | null;
+  driver_snapshot: {
+    firstName:       string;
+    phone:           string;
+    email:           string | null;
+    license:         string;
+    ykb:             string;
+    driverCard:      string;
+    region:          string;
+    availability:    string;
+    domain:          string | null;
+    shiftPreference: string | null;
+  };
+}
+
+interface LoadedShortlist {
+  id:                string;
+  company_need_id:   string;
+  total_candidates:  number;
+  total_shortlisted: number;
+  summary:           string;
+  entries:           LoadedEntry[];
+}
+
+interface ContactState { status: ContactStatus; note: string }
+type ContactMap = Record<string, ContactState>;
+
+// ─── Error messages ───────────────────────────────────────────────────────────
+
+const API_ERROR_MESSAGES: Record<string, string> = {
+  fetch_failed:        'Unable to reach the database. Check that Supabase is connected and all migrations have been applied.',
+  db_not_configured:   'Database credentials are missing. Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to environment variables.',
+  auth_not_configured: 'Server is missing RECRUITER_API_KEY. Add it to environment variables.',
+  unauthorized:        'Invalid recruiter API key.',
+  supabase_error:      'A database error occurred. Check Supabase logs for details.',
+  need_not_found:      'The selected company need was not found.',
+  not_found:           'Not found.',
+};
+
+function apiError(code: string, detail?: string): string {
+  const base = API_ERROR_MESSAGES[code] ?? `Server error: ${code}`;
+  return detail ? `${base} (${detail})` : base;
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function RecruiterPage() {
-  const [needs, setNeeds]           = useState<NeedRow[]>([]);
+  const [needs, setNeeds]               = useState<NeedRow[]>([]);
   const [loadingNeeds, setLoadingNeeds] = useState(true);
-  const [needsError, setNeedsError] = useState<string | null>(null);
+  const [needsError, setNeedsError]     = useState<string | null>(null);
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [matching, setMatching]     = useState(false);
-  const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
-  const [matchError, setMatchError] = useState<string | null>(null);
+  const [selectedId, setSelectedId]       = useState<string | null>(null);
+  const [matching, setMatching]           = useState(false);
+  const [matchResult, setMatchResult]     = useState<MatchResult | null>(null);
+  const [matchError, setMatchError]       = useState<string | null>(null);
+  const [contactMap, setContactMap]       = useState<ContactMap>({});
+
+  const [loadInput, setLoadInput]               = useState('');
+  const [loadingShortlist, setLoadingShortlist] = useState(false);
+  const [loadedShortlist, setLoadedShortlist]   = useState<LoadedShortlist | null>(null);
+  const [loadError, setLoadError]               = useState<string | null>(null);
+  const [loadedContactMap, setLoadedContactMap] = useState<ContactMap>({});
+
+  // TODO: replace NEXT_PUBLIC key with session-based auth before production use
+  const recruiterKey = process.env.NEXT_PUBLIC_RECRUITER_API_KEY ?? '';
 
   useEffect(() => {
-    fetch('/api/company-needs')
+    fetch('/api/company-needs', {
+      headers: { 'X-Recruiter-Key': recruiterKey },
+    })
       .then((r) => r.json())
       .then((data: unknown) => {
-        const typed = data as { needs?: NeedRow[]; error?: string };
+        const typed = data as { needs?: NeedRow[]; error?: string; detail?: string };
         if (typed.error) {
-          setNeedsError(typed.error);
+          setNeedsError(apiError(typed.error, typed.detail));
         } else {
           setNeeds(Array.isArray(typed.needs) ? typed.needs : []);
         }
         setLoadingNeeds(false);
       })
       .catch(() => {
-        setNeedsError('Failed to load company needs');
+        setNeedsError('Could not reach the server. Check your network connection.');
         setLoadingNeeds(false);
       });
-  }, []);
+  }, [recruiterKey]);
 
   function selectNeed(id: string) {
     setSelectedId(id);
     setMatchResult(null);
     setMatchError(null);
+    setContactMap({});
   }
 
   async function runMatch() {
@@ -86,24 +153,89 @@ export default function RecruiterPage() {
     setMatching(true);
     setMatchResult(null);
     setMatchError(null);
+    setContactMap({});
 
     try {
       const res = await fetch('/api/recruiter/match', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Recruiter-Key': recruiterKey },
         body:    JSON.stringify({ need_id: selectedId }),
       });
-      const data = await res.json() as MatchResult & { error?: string };
+      const data = await res.json() as MatchResult & { error?: string; detail?: string };
       if (!res.ok) {
-        setMatchError(data.error ?? 'Match failed');
+        setMatchError(apiError(data.error ?? 'supabase_error', data.detail));
       } else {
         setMatchResult(data);
+        const initial: ContactMap = {};
+        for (const entry of data.shortlisted) {
+          initial[entry.shortlist_entry_id] = { status: 'new', note: '' };
+        }
+        setContactMap(initial);
       }
     } catch {
       setMatchError('Network error');
     } finally {
       setMatching(false);
     }
+  }
+
+  async function loadShortlist() {
+    const id = loadInput.trim();
+    if (!id) return;
+    setLoadingShortlist(true);
+    setLoadedShortlist(null);
+    setLoadError(null);
+    setLoadedContactMap({});
+
+    try {
+      const res = await fetch(`/api/recruiter/shortlists/${id}`, {
+        headers: { 'X-Recruiter-Key': recruiterKey },
+      });
+      const data = await res.json() as LoadedShortlist & { error?: string; detail?: string };
+      if (!res.ok) {
+        setLoadError(apiError(data.error ?? 'supabase_error', data.detail));
+      } else {
+        setLoadedShortlist(data);
+        const initial: ContactMap = {};
+        for (const e of data.entries) {
+          initial[e.id] = { status: e.contact_status, note: e.recruiter_note ?? '' };
+        }
+        setLoadedContactMap(initial);
+      }
+    } catch {
+      setLoadError('Network error');
+    } finally {
+      setLoadingShortlist(false);
+    }
+  }
+
+  function handleStatusChange(entryId: string, status: ContactStatus, isLoaded: boolean) {
+    if (isLoaded) {
+      setLoadedContactMap((prev) => ({ ...prev, [entryId]: { ...prev[entryId], status } }));
+    } else {
+      setContactMap((prev) => ({ ...prev, [entryId]: { ...prev[entryId], status } }));
+    }
+    fetch(`/api/recruiter/shortlist-entries/${entryId}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-Recruiter-Key': recruiterKey },
+      body:    JSON.stringify({ contact_status: status }),
+    }).catch(console.error);
+  }
+
+  function handleNoteChange(entryId: string, note: string, isLoaded: boolean) {
+    if (isLoaded) {
+      setLoadedContactMap((prev) => ({ ...prev, [entryId]: { ...prev[entryId], note } }));
+    } else {
+      setContactMap((prev) => ({ ...prev, [entryId]: { ...prev[entryId], note } }));
+    }
+  }
+
+  function handleNoteSave(entryId: string, note: string) {
+    fetch(`/api/recruiter/shortlist-entries/${entryId}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-Recruiter-Key': recruiterKey },
+      body:    JSON.stringify({ recruiter_note: note }),
+    }).catch(console.error);
   }
 
   return (
@@ -178,7 +310,6 @@ export default function RecruiterPage() {
               Match Results
             </h2>
 
-            {/* Summary row */}
             <div className="rounded-lg border border-gray-200 bg-white px-5 py-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
               <div>
                 <span className="text-gray-400">Shortlist ID </span>
@@ -199,11 +330,96 @@ export default function RecruiterPage() {
               </p>
             ) : (
               <div className="space-y-3">
-                {matchResult.shortlisted.map((entry, i) => (
-                  <DriverCard key={entry.driver.id} rank={i + 1} entry={entry} />
-                ))}
+                {matchResult.shortlisted.map((entry, i) => {
+                  const cs = contactMap[entry.shortlist_entry_id] ?? { status: 'new' as ContactStatus, note: '' };
+                  return (
+                    <DriverCard
+                      key={entry.driver.id}
+                      rank={i + 1}
+                      entry={entry}
+                      contactStatus={cs.status}
+                      note={cs.note}
+                      onStatusChange={(s) => handleStatusChange(entry.shortlist_entry_id, s, false)}
+                      onNoteChange={(n) => handleNoteChange(entry.shortlist_entry_id, n, false)}
+                      onNoteSave={() => handleNoteSave(entry.shortlist_entry_id, cs.note)}
+                    />
+                  );
+                })}
               </div>
             )}
+          </section>
+        )}
+
+        {/* ── Load Previous Shortlist ──────────────────────────────────────── */}
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+            Load Previous Shortlist
+          </h2>
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={loadInput}
+              onChange={(e) => setLoadInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') loadShortlist(); }}
+              placeholder="Shortlist ID…"
+              className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <button
+              onClick={loadShortlist}
+              disabled={loadingShortlist || !loadInput.trim()}
+              className="px-4 py-2 rounded-md bg-gray-700 text-white text-sm font-medium
+                         hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed
+                         transition-colors"
+            >
+              {loadingShortlist ? 'Loading…' : 'Load'}
+            </button>
+          </div>
+          {loadError && <p className="mt-2 text-sm text-red-500">{loadError}</p>}
+        </section>
+
+        {/* ── Loaded Shortlist ─────────────────────────────────────────────── */}
+        {loadedShortlist && (
+          <section className="space-y-4">
+            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
+              Shortlist {loadedShortlist.id.slice(0, 8)}…
+            </h2>
+
+            <div className="rounded-lg border border-gray-200 bg-white px-5 py-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
+              <div>
+                <span className="text-gray-400">Need ID </span>
+                <span className="font-mono text-xs text-gray-700">
+                  {loadedShortlist.company_need_id.slice(0, 8)}…
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-400">Shortlisted </span>
+                <span className="font-semibold text-gray-900">
+                  {loadedShortlist.total_shortlisted}/{loadedShortlist.total_candidates}
+                </span>
+              </div>
+              <div className="text-gray-500 italic">{loadedShortlist.summary}</div>
+            </div>
+
+            <div className="space-y-3">
+              {loadedShortlist.entries.map((entry) => {
+                const cs = loadedContactMap[entry.id] ?? {
+                  status: entry.contact_status,
+                  note:   entry.recruiter_note ?? '',
+                };
+                return (
+                  <LoadedEntryCard
+                    key={entry.id}
+                    entry={entry}
+                    contactStatus={cs.status}
+                    note={cs.note}
+                    onStatusChange={(s) => handleStatusChange(entry.id, s, true)}
+                    onNoteChange={(n) => handleNoteChange(entry.id, n, true)}
+                    onNoteSave={() => handleNoteSave(entry.id, cs.note)}
+                  />
+                );
+              })}
+            </div>
           </section>
         )}
 
@@ -217,7 +433,7 @@ export default function RecruiterPage() {
 function KV({ k, v, urgency }: { k: string; v: string; urgency?: boolean }) {
   const valueEl = urgency ? (
     <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${
-      v === 'emergency' ? 'bg-red-100 text-red-700'   :
+      v === 'emergency' ? 'bg-red-100 text-red-700'     :
       v === 'urgent'    ? 'bg-amber-100 text-amber-700' :
                           'bg-gray-100 text-gray-600'
     }`}>{v}</span>
@@ -233,12 +449,92 @@ function KV({ k, v, urgency }: { k: string; v: string; urgency?: boolean }) {
   );
 }
 
-function DriverCard({ rank, entry }: { rank: number; entry: MatchEntry }) {
+const STATUS_LABELS: Record<ContactStatus, string> = {
+  new:            'New',
+  contacted:      'Contacted',
+  interested:     'Interested',
+  not_interested: 'Not interested',
+};
+
+const STATUS_ACTIVE_CLASS: Record<ContactStatus, string> = {
+  new:            'bg-gray-100 text-gray-600',
+  contacted:      'bg-blue-100 text-blue-700',
+  interested:     'bg-green-100 text-green-700',
+  not_interested: 'bg-red-100 text-red-700',
+};
+
+function ContactPanel({
+  contactStatus,
+  note,
+  onStatusChange,
+  onNoteChange,
+  onNoteSave,
+}: {
+  contactStatus:  ContactStatus;
+  note:           string;
+  onStatusChange: (s: ContactStatus) => void;
+  onNoteChange:   (n: string) => void;
+  onNoteSave:     () => void;
+}) {
+  return (
+    <>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {(Object.keys(STATUS_LABELS) as ContactStatus[]).map((s) => (
+          <button
+            key={s}
+            onClick={() => onStatusChange(s)}
+            className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+              contactStatus === s
+                ? `${STATUS_ACTIVE_CLASS[s]} ring-1 ring-inset ring-current`
+                : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+            }`}
+          >
+            {STATUS_LABELS[s]}
+          </button>
+        ))}
+      </div>
+      <div className="mt-2 flex gap-2">
+        <textarea
+          value={note}
+          onChange={(e) => onNoteChange(e.target.value)}
+          placeholder="Recruiter note…"
+          rows={2}
+          className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm text-gray-700
+                     resize-none focus:outline-none focus:ring-1 focus:ring-blue-400"
+        />
+        <button
+          onClick={onNoteSave}
+          className="self-end px-3 py-1 rounded bg-gray-100 text-xs font-medium text-gray-600
+                     hover:bg-gray-200 transition-colors whitespace-nowrap"
+        >
+          Save note
+        </button>
+      </div>
+    </>
+  );
+}
+
+function DriverCard({
+  rank,
+  entry,
+  contactStatus,
+  note,
+  onStatusChange,
+  onNoteChange,
+  onNoteSave,
+}: {
+  rank:           number;
+  entry:          MatchEntry;
+  contactStatus:  ContactStatus;
+  note:           string;
+  onStatusChange: (s: ContactStatus) => void;
+  onNoteChange:   (n: string) => void;
+  onNoteSave:     () => void;
+}) {
   const { driver, score } = entry;
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">
-      {/* Header row */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <span className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-600 text-white
@@ -259,7 +555,6 @@ function DriverCard({ rank, entry }: { rank: number; entry: MatchEntry }) {
         </div>
       </div>
 
-      {/* Credential pills */}
       <div className="mt-3 grid grid-cols-3 sm:grid-cols-7 gap-2">
         <Pill label="License"      value={driver.license} />
         <Pill label="YKB"          value={driver.ykb} />
@@ -270,7 +565,6 @@ function DriverCard({ rank, entry }: { rank: number; entry: MatchEntry }) {
         <Pill label="Shift"        value={driver.shiftPreference ?? '—'} />
       </div>
 
-      {/* Flags */}
       {score.flags.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1">
           {score.flags.map((flag) => (
@@ -282,8 +576,88 @@ function DriverCard({ rank, entry }: { rank: number; entry: MatchEntry }) {
         </div>
       )}
 
-      {/* Score summary */}
       <p className="mt-3 text-sm text-gray-500 italic">{score.summary}</p>
+
+      <ContactPanel
+        contactStatus={contactStatus}
+        note={note}
+        onStatusChange={onStatusChange}
+        onNoteChange={onNoteChange}
+        onNoteSave={onNoteSave}
+      />
+    </div>
+  );
+}
+
+function LoadedEntryCard({
+  entry,
+  contactStatus,
+  note,
+  onStatusChange,
+  onNoteChange,
+  onNoteSave,
+}: {
+  entry:          LoadedEntry;
+  contactStatus:  ContactStatus;
+  note:           string;
+  onStatusChange: (s: ContactStatus) => void;
+  onNoteChange:   (n: string) => void;
+  onNoteSave:     () => void;
+}) {
+  const snap = entry.driver_snapshot;
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-500 text-white
+                           text-xs font-bold flex items-center justify-center">
+            {entry.rank}
+          </span>
+          <div>
+            <p className="font-semibold text-gray-900">{snap.firstName}</p>
+            <p className="text-sm text-gray-500">{snap.phone}</p>
+            {snap.email && (
+              <p className="text-xs text-gray-400">{snap.email}</p>
+            )}
+          </div>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="text-2xl font-bold text-gray-500">{entry.match_score}</p>
+          <p className="text-xs text-gray-400">match score</p>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 sm:grid-cols-7 gap-2">
+        <Pill label="License"      value={snap.license} />
+        <Pill label="YKB"          value={snap.ykb} />
+        <Pill label="Driver card"  value={snap.driverCard} />
+        <Pill label="Region"       value={snap.region} />
+        <Pill label="Availability" value={snap.availability} />
+        <Pill label="Domain"       value={snap.domain ?? '—'} />
+        <Pill label="Shift"        value={snap.shiftPreference ?? '—'} />
+      </div>
+
+      {entry.flags.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1">
+          {entry.flags.map((flag) => (
+            <span key={flag}
+              className="rounded bg-amber-100 text-amber-700 text-xs px-2 py-0.5 font-medium">
+              {flag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <p className="mt-3 text-sm text-gray-500 italic">{entry.summary}</p>
+
+      <ContactPanel
+        contactStatus={contactStatus}
+        note={note}
+        onStatusChange={onStatusChange}
+        onNoteChange={onNoteChange}
+        onNoteSave={onNoteSave}
+      />
     </div>
   );
 }

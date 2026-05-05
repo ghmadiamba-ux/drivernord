@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getLead, updateLead } from '../../../../lib/supabaseStore';
+
+export const dynamic = 'force-dynamic';
 import { applyStep } from '../../../../lib/applyStep';
 import type { StepId } from '../../../../lib/conversation';
+import { ingestLead } from '../../../../lib/ingestLead';
 
 export async function GET(
   _req: NextRequest,
@@ -56,6 +59,13 @@ export async function PATCH(
     await updateLead(result.lead);
   } catch {
     return NextResponse.json({ error: 'supabase_error' }, { status: 500 });
+  }
+
+  if (result.lead.lead_status === 'ready_for_ingestion') {
+    const ingestResult = await ingestLead(result.lead.id);
+    if (!ingestResult.ok) {
+      console.error('[auto-ingest] failed for lead', result.lead.id, '—', ingestResult.error);
+    }
   }
 
   return NextResponse.json({

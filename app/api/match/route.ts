@@ -72,12 +72,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const result = buildShortlist(drivers, need);
 
   // 8. Persist shortlist
-  let shortlistId: string;
+  let shortlistResult;
   try {
-    shortlistId = await createShortlist(needId, result);
+    shortlistResult = await createShortlist(needId, result);
   } catch {
     return NextResponse.json({ error: 'supabase_error' }, { status: 500 });
   }
 
-  return NextResponse.json({ shortlist_id: shortlistId, ...result }, { status: 200 });
+  return NextResponse.json({ shortlist_id: shortlistResult.shortlistId, ...result }, { status: 200 });
 }

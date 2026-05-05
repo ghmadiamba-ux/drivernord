@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getLead } from '../../../../../lib/supabaseStore';
+
+export const dynamic = 'force-dynamic';
 import { buildDriverProfile } from '../../../../../lib/driverProfile';
 import { buildIngestedDriver } from '../../../../../lib/ingestedDriver';
-import { createIngestedDriver } from '../../../../../lib/ingestedDriverStore';
 import { scoreDriver } from '../../../../../lib/scoreDriver';
+import { ingestLead } from '../../../../../lib/ingestLead';
 import type { IngestedDriver } from '../../../../../lib/ingestedDriver';
 import type { DriverScore } from '../../../../../lib/scoreDriver';
 
@@ -48,21 +50,27 @@ export async function GET(
   return NextResponse.json({ driver: result.driver, score: result.score });
 }
 
-// POST — ingest + score: persists to ingested_drivers, then returns the same shape
+// POST — ingest + score: persists to ingested_drivers with explicit failure response
 export async function POST(
   _req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
-  const result = await resolvePipeline(params.id);
-  if ('response' in result) return result.response;
+  const result = await ingestLead(params.id);
 
-  // Duplicate upserts are silently ignored by the store.
-  // Failure must never break the score response.
-  try {
-    await createIngestedDriver(result.driver);
-  } catch (err) {
-    console.error('createIngestedDriver failed (non-fatal):', err);
+  if (!result.ok) {
+    switch (result.error) {
+      case 'lead_not_found':
+        return NextResponse.json({ error: 'lead_not_found' }, { status: 404 });
+      case 'not_ready_for_ingestion':
+      case 'missing_required_field':
+        return NextResponse.json(
+          { error: result.error, lead_status: result.lead_status },
+          { status: 409 },
+        );
+      case 'supabase_error':
+        return NextResponse.json({ error: 'supabase_error' }, { status: 500 });
+    }
   }
 
-  return NextResponse.json({ driver: result.driver, score: result.score });
+  return NextResponse.json({ driver: result.driver, score: result.score, persisted: true });
 }
