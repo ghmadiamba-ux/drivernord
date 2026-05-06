@@ -1,428 +1,359 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ContactStatus = 'new' | 'contacted' | 'interested' | 'not_interested';
-
-interface NeedRow {
-  id:                 string;
-  company_id:         string;
-  license_required:   string;
-  domain_required:    string;
-  domain_preferred:   string[];
-  location_region:    string;
-  relocation_allowed: boolean;
-  shift_type:         string;
-  urgency:            string;
-  status:             string;
+interface SystemActionRow {
+  id:           string;
+  action_type:  string;
+  triggered_by: string;
+  target_type:  string;
+  target_id:    string;
+  status:       string;
+  input:        Record<string, unknown> | null;
+  result:       Record<string, unknown> | null;
+  error:        string | null;
+  created_at:   string;
+  completed_at: string | null;
 }
 
-interface MatchEntry {
-  shortlist_entry_id: string;
-  driver: {
-    id:              string;
-    license:         string;
-    ykb:             string;
-    driverCard:      string;
-    location:        { region: string; willingToRelocate: boolean | null };
-    availability:    string;
-    domain:          string | null;
-    shiftPreference: string | null;
-    contact:         { firstName: string; phone: string; email: string | null };
+interface Warning {
+  type:     string;
+  message:  string;
+  severity: 'warning' | 'error';
+}
+
+interface CockpitStats {
+  drivers:        number;
+  openNeeds:      number;
+  pendingActions: number;
+  failedActions:  number;
+  emergencyNeeds: number;
+}
+
+interface TodayMetrics {
+  contacted:     number;
+  suggested:     number;
+  skipped:       number;
+  matchRuns:     number;
+  followUpsSent: number;
+  errors:        number;
+}
+
+interface CockpitData {
+  stats:          CockpitStats;
+  pendingActions: SystemActionRow[];
+  failedActions:  SystemActionRow[];
+  recentActions:  SystemActionRow[];
+  warnings:       Warning[];
+  pipeline: {
+    totalDrivers: number;
+    shortlisted:  number;
+    contacted:    number;
+    interested:   number;
   };
-  score: {
-    total:   number;
-    flags:   string[];
-    summary: string;
-  };
+  today: TodayMetrics;
 }
 
-interface MatchResult {
-  shortlist_id:     string;
-  shortlisted:      MatchEntry[];
-  rejected:         Array<{ driverId: string; reason: string }>;
-  totalCandidates:  number;
-  totalShortlisted: number;
-  summary:          string;
-}
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-interface LoadedEntry {
-  id:              string;
-  rank:            number;
-  match_score:     number;
-  flags:           string[];
-  summary:         string;
-  contact_status:  ContactStatus;
-  recruiter_note:  string | null;
-  driver_snapshot: {
-    firstName:       string;
-    phone:           string;
-    email:           string | null;
-    license:         string;
-    ykb:             string;
-    driverCard:      string;
-    region:          string;
-    availability:    string;
-    domain:          string | null;
-    shiftPreference: string | null;
-  };
-}
-
-interface LoadedShortlist {
-  id:                string;
-  company_need_id:   string;
-  total_candidates:  number;
-  total_shortlisted: number;
-  summary:           string;
-  entries:           LoadedEntry[];
-}
-
-interface ContactState { status: ContactStatus; note: string }
-type ContactMap = Record<string, ContactState>;
-
-// ─── Error messages ───────────────────────────────────────────────────────────
-
-const API_ERROR_MESSAGES: Record<string, string> = {
-  fetch_failed:        'Unable to reach the database. Check that Supabase is connected and all migrations have been applied.',
-  db_not_configured:   'Database credentials are missing. Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to environment variables.',
-  auth_not_configured: 'Server is missing RECRUITER_API_KEY. Add it to environment variables.',
-  unauthorized:        'Invalid recruiter API key.',
-  supabase_error:      'A database error occurred. Check Supabase logs for details.',
-  need_not_found:      'The selected company need was not found.',
-  not_found:           'Not found.',
+const ACTION_ICONS: Record<string, string> = {
+  match_run:           '⟳',
+  shortlist_created:   '☰',
+  contact_suggested:   '?',
+  contact_sent:        '→',
+  contact_skipped:     '⊘',
+  contact_confirmed:   '✓',
+  follow_up_triggered: '↻',
+  follow_up_sent:      '↗',
+  follow_up_skipped:   '—',
+  follow_up_confirmed: '✓',
+  override_cancelled:  '✕',
+  override_retried:    '↺',
+  driver_ingested:     '+',
+  need_ingested:       '+',
 };
 
-function apiError(code: string, detail?: string): string {
-  const base = API_ERROR_MESSAGES[code] ?? `Server error: ${code}`;
-  return detail ? `${base} (${detail})` : base;
+const ACTION_LABELS: Record<string, string> = {
+  driver_ingested:     'Driver ingested',
+  need_ingested:       'Need ingested',
+  match_run:           'Match run',
+  shortlist_created:   'Shortlist created',
+  contact_suggested:   'Contact suggested',
+  contact_sent:        'Contact sent',
+  contact_skipped:     'Contact skipped',
+  contact_confirmed:   'Contact confirmed',
+  follow_up_triggered: 'Follow-up triggered',
+  follow_up_confirmed: 'Follow-up confirmed',
+  follow_up_sent:      'Follow-up sent',
+  follow_up_skipped:   'Follow-up skipped',
+  override_cancelled:  'Override: cancelled',
+  override_retried:    'Override: retried',
+};
+
+const SKIP_REASON_LABELS: Record<string, string> = {
+  ykb_in_progress:    'YKB pending',
+  not_available_yet:  'not available yet',
+  recently_contacted: 'dedup window',
+  low_score:          'score too low',
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function actionLabel(type: string): string {
+  return ACTION_LABELS[type] ?? type.replace(/_/g, ' ');
+}
+
+function actionIcon(type: string): string {
+  return ACTION_ICONS[type] ?? '·';
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('sv-SE', {
+    hour:   '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
+function formatDate(iso: string): string {
+  const d     = new Date(iso);
+  const today = new Date();
+  if (d.toDateString() === today.toDateString()) return formatTime(iso);
+  return (
+    d.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' }) +
+    ' ' +
+    formatTime(iso)
+  );
+}
+
+function getSkipReason(action: SystemActionRow): string | null {
+  const reason = action.result?.reason as string | undefined;
+  if (!reason) return null;
+  if (reason === 'recently_contacted') {
+    const days = action.result?.dedup_window_days;
+    return days ? `dedup ${days}d` : 'dedup window';
+  }
+  return SKIP_REASON_LABELS[reason] ?? reason.replace(/_/g, ' ');
+}
+
+function getUrgency(action: SystemActionRow): string | null {
+  return (action.input?.urgency as string) ?? null;
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function RecruiterPage() {
-  const [needs, setNeeds]               = useState<NeedRow[]>([]);
-  const [loadingNeeds, setLoadingNeeds] = useState(true);
-  const [needsError, setNeedsError]     = useState<string | null>(null);
+  const [data, setData]               = useState<CockpitData | null>(null);
+  const [loading, setLoading]         = useState(true);
+  const [fetchError, setFetchError]   = useState<string | null>(null);
+  const [actioning, setActioning]     = useState<Record<string, boolean>>({});
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const [selectedId, setSelectedId]       = useState<string | null>(null);
-  const [matching, setMatching]           = useState(false);
-  const [matchResult, setMatchResult]     = useState<MatchResult | null>(null);
-  const [matchError, setMatchError]       = useState<string | null>(null);
-  const [contactMap, setContactMap]       = useState<ContactMap>({});
-
-  const [loadInput, setLoadInput]               = useState('');
-  const [loadingShortlist, setLoadingShortlist] = useState(false);
-  const [loadedShortlist, setLoadedShortlist]   = useState<LoadedShortlist | null>(null);
-  const [loadError, setLoadError]               = useState<string | null>(null);
-  const [loadedContactMap, setLoadedContactMap] = useState<ContactMap>({});
-
-  // TODO: replace NEXT_PUBLIC key with session-based auth before production use
   const recruiterKey = process.env.NEXT_PUBLIC_RECRUITER_API_KEY ?? '';
 
-  useEffect(() => {
-    fetch('/api/company-needs', {
-      headers: { 'X-Recruiter-Key': recruiterKey },
-    })
-      .then((r) => r.json())
-      .then((data: unknown) => {
-        const typed = data as { needs?: NeedRow[]; error?: string; detail?: string };
-        if (typed.error) {
-          setNeedsError(apiError(typed.error, typed.detail));
-        } else {
-          setNeeds(Array.isArray(typed.needs) ? typed.needs : []);
-        }
-        setLoadingNeeds(false);
-      })
-      .catch(() => {
-        setNeedsError('Could not reach the server. Check your network connection.');
-        setLoadingNeeds(false);
-      });
-  }, [recruiterKey]);
-
-  function selectNeed(id: string) {
-    setSelectedId(id);
-    setMatchResult(null);
-    setMatchError(null);
-    setContactMap({});
-  }
-
-  async function runMatch() {
-    if (!selectedId) return;
-    setMatching(true);
-    setMatchResult(null);
-    setMatchError(null);
-    setContactMap({});
-
+  const fetchData = useCallback(async () => {
     try {
-      const res = await fetch('/api/recruiter/match', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Recruiter-Key': recruiterKey },
-        body:    JSON.stringify({ need_id: selectedId }),
-      });
-      const data = await res.json() as MatchResult & { error?: string; detail?: string };
-      if (!res.ok) {
-        setMatchError(apiError(data.error ?? 'supabase_error', data.detail));
-      } else {
-        setMatchResult(data);
-        const initial: ContactMap = {};
-        for (const entry of data.shortlisted) {
-          initial[entry.shortlist_entry_id] = { status: 'new', note: '' };
-        }
-        setContactMap(initial);
-      }
-    } catch {
-      setMatchError('Network error');
-    } finally {
-      setMatching(false);
-    }
-  }
-
-  async function loadShortlist() {
-    const id = loadInput.trim();
-    if (!id) return;
-    setLoadingShortlist(true);
-    setLoadedShortlist(null);
-    setLoadError(null);
-    setLoadedContactMap({});
-
-    try {
-      const res = await fetch(`/api/recruiter/shortlists/${id}`, {
+      const res = await fetch('/api/cockpit', {
         headers: { 'X-Recruiter-Key': recruiterKey },
       });
-      const data = await res.json() as LoadedShortlist & { error?: string; detail?: string };
       if (!res.ok) {
-        setLoadError(apiError(data.error ?? 'supabase_error', data.detail));
-      } else {
-        setLoadedShortlist(data);
-        const initial: ContactMap = {};
-        for (const e of data.entries) {
-          initial[e.id] = { status: e.contact_status, note: e.recruiter_note ?? '' };
-        }
-        setLoadedContactMap(initial);
+        const err = await res.json() as { error?: string };
+        setFetchError(err.error ?? 'fetch_failed');
+        return;
       }
+      setData(await res.json() as CockpitData);
+      setFetchError(null);
+      setLastUpdated(new Date());
     } catch {
-      setLoadError('Network error');
+      setFetchError('network_error');
     } finally {
-      setLoadingShortlist(false);
+      setLoading(false);
+    }
+  }, [recruiterKey]);
+
+  useEffect(() => {
+    fetchData();
+    const id = setInterval(fetchData, 15_000);
+    return () => clearInterval(id);
+  }, [fetchData]);
+
+  async function handleAction(actionId: string, action: 'approve' | 'cancel') {
+    setActioning((p) => ({ ...p, [actionId]: true }));
+    try {
+      await fetch(`/api/cockpit/actions/${actionId}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-Recruiter-Key': recruiterKey },
+        body:    JSON.stringify({ action }),
+      });
+      await fetchData();
+    } catch { /* ignore */ } finally {
+      setActioning((p) => ({ ...p, [actionId]: false }));
     }
   }
 
-  function handleStatusChange(entryId: string, status: ContactStatus, isLoaded: boolean) {
-    if (isLoaded) {
-      setLoadedContactMap((prev) => ({ ...prev, [entryId]: { ...prev[entryId], status } }));
-    } else {
-      setContactMap((prev) => ({ ...prev, [entryId]: { ...prev[entryId], status } }));
-    }
-    fetch(`/api/recruiter/shortlist-entries/${entryId}`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json', 'X-Recruiter-Key': recruiterKey },
-      body:    JSON.stringify({ contact_status: status }),
-    }).catch(console.error);
-  }
-
-  function handleNoteChange(entryId: string, note: string, isLoaded: boolean) {
-    if (isLoaded) {
-      setLoadedContactMap((prev) => ({ ...prev, [entryId]: { ...prev[entryId], note } }));
-    } else {
-      setContactMap((prev) => ({ ...prev, [entryId]: { ...prev[entryId], note } }));
+  async function handleRetry(actionId: string) {
+    setActioning((p) => ({ ...p, [actionId]: true }));
+    try {
+      await fetch(`/api/cockpit/actions/${actionId}/retry`, {
+        method:  'POST',
+        headers: { 'X-Recruiter-Key': recruiterKey },
+      });
+      await fetchData();
+    } catch { /* ignore */ } finally {
+      setActioning((p) => ({ ...p, [actionId]: false }));
     }
   }
 
-  function handleNoteSave(entryId: string, note: string) {
-    fetch(`/api/recruiter/shortlist-entries/${entryId}`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json', 'X-Recruiter-Key': recruiterKey },
-      body:    JSON.stringify({ recruiter_note: note }),
-    }).catch(console.error);
-  }
+  const systemStatus: 'operational' | 'degraded' | 'critical' =
+    !data                                          ? 'operational' :
+    data.stats.failedActions > 0 || data.warnings.some((w) => w.severity === 'error') ? 'critical' :
+    data.warnings.length > 0                      ? 'degraded' :
+                                                     'operational';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
-        <h1 className="text-lg font-semibold text-gray-900">Recruiter Dashboard</h1>
-      </header>
+    <div className="min-h-screen bg-slate-950 text-slate-100">
 
-      <main className="max-w-4xl mx-auto px-6 py-8 space-y-8">
+      {/* ── Sticky Header ────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur border-b border-slate-800">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3">
+          <div className="flex flex-wrap items-center gap-4">
 
-        {/* ── Open Company Needs ───────────────────────────────────────────── */}
-        <section>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
-            Open Company Needs
-          </h2>
-
-          {loadingNeeds && <p className="text-sm text-gray-400">Loading…</p>}
-          {needsError   && <p className="text-sm text-red-500">{needsError}</p>}
-          {!loadingNeeds && !needsError && needs.length === 0 && (
-            <p className="text-sm text-gray-400">No open company needs found.</p>
-          )}
-
-          <div className="space-y-2">
-            {needs.map((need) => (
-              <button
-                key={need.id}
-                onClick={() => selectNeed(need.id)}
-                className={`w-full text-left rounded-lg border px-4 py-3 transition-colors ${
-                  selectedId === need.id
-                    ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
-                }`}
-              >
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
-                  <span className="font-mono text-xs text-gray-400">{need.id.slice(0, 8)}…</span>
-                  <KV k="License"  v={need.license_required} />
-                  <KV k="Domain"   v={need.domain_required} />
-                  <KV k="Region"   v={need.location_region} />
-                  <KV k="Shift"    v={need.shift_type} />
-                  <KV k="Urgency"  v={need.urgency} urgency />
-                  <KV k="Status"   v={need.status} />
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Run Match button ─────────────────────────────────────────────── */}
-        {selectedId && (
-          <div className="flex items-center gap-4">
-            <button
-              onClick={runMatch}
-              disabled={matching}
-              className="px-5 py-2 rounded-md bg-blue-600 text-white text-sm font-medium
-                         hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed
-                         transition-colors"
-            >
-              {matching ? 'Matching…' : 'Run Match'}
-            </button>
-            <span className="text-xs text-gray-400 font-mono">{selectedId}</span>
-          </div>
-        )}
-
-        {matchError && (
-          <p className="text-sm text-red-500">Error: {matchError}</p>
-        )}
-
-        {/* ── Match Results ────────────────────────────────────────────────── */}
-        {matchResult && (
-          <section className="space-y-4">
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
-              Match Results
-            </h2>
-
-            <div className="rounded-lg border border-gray-200 bg-white px-5 py-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
-              <div>
-                <span className="text-gray-400">Shortlist ID </span>
-                <span className="font-mono text-xs text-gray-700">{matchResult.shortlist_id}</span>
-              </div>
-              <div>
-                <span className="text-gray-400">Shortlisted </span>
-                <span className="font-semibold text-gray-900">
-                  {matchResult.totalShortlisted}/{matchResult.totalCandidates}
-                </span>
-              </div>
-              <div className="text-gray-500 italic">{matchResult.summary}</div>
+            {/* Brand + status */}
+            <div className="flex items-center gap-3 mr-2">
+              <span className="text-sm font-bold text-slate-100 tracking-tight">DriverNord</span>
+              <StatusPill status={systemStatus} />
             </div>
 
-            {matchResult.shortlisted.length === 0 ? (
-              <p className="text-sm text-gray-400">
-                No drivers passed the hard filters for this need.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {matchResult.shortlisted.map((entry, i) => {
-                  const cs = contactMap[entry.shortlist_entry_id] ?? { status: 'new' as ContactStatus, note: '' };
-                  return (
-                    <DriverCard
-                      key={entry.driver.id}
-                      rank={i + 1}
-                      entry={entry}
-                      contactStatus={cs.status}
-                      note={cs.note}
-                      onStatusChange={(s) => handleStatusChange(entry.shortlist_entry_id, s, false)}
-                      onNoteChange={(n) => handleNoteChange(entry.shortlist_entry_id, n, false)}
-                      onNoteSave={() => handleNoteSave(entry.shortlist_entry_id, cs.note)}
-                    />
-                  );
-                })}
+            {/* Stat badges */}
+            {data && (
+              <div className="flex flex-wrap items-center gap-2">
+                <StatBadge label="Drivers"   value={data.stats.drivers}        />
+                <StatBadge label="Open"      value={data.stats.openNeeds}       />
+                <StatBadge
+                  label="Pending"
+                  value={data.stats.pendingActions}
+                  variant={data.stats.pendingActions > 0 ? 'amber' : 'default'}
+                />
+                <StatBadge
+                  label="Failed"
+                  value={data.stats.failedActions}
+                  variant={data.stats.failedActions > 0 ? 'red' : 'default'}
+                />
+                <StatBadge
+                  label="Emergency"
+                  value={data.stats.emergencyNeeds}
+                  variant={data.stats.emergencyNeeds > 0 ? 'red' : 'default'}
+                />
               </div>
             )}
-          </section>
-        )}
 
-        {/* ── Load Previous Shortlist ──────────────────────────────────────── */}
-        <section>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
-            Load Previous Shortlist
-          </h2>
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={loadInput}
-              onChange={(e) => setLoadInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') loadShortlist(); }}
-              placeholder="Shortlist ID…"
-              className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <button
-              onClick={loadShortlist}
-              disabled={loadingShortlist || !loadInput.trim()}
-              className="px-4 py-2 rounded-md bg-gray-700 text-white text-sm font-medium
-                         hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed
-                         transition-colors"
-            >
-              {loadingShortlist ? 'Loading…' : 'Load'}
-            </button>
+            {/* Last updated */}
+            <div className="ml-auto text-xs text-slate-600 tabular-nums">
+              {lastUpdated
+                ? `Updated ${formatTime(lastUpdated.toISOString())}`
+                : loading
+                  ? 'Loading…'
+                  : ''}
+            </div>
           </div>
-          {loadError && <p className="mt-2 text-sm text-red-500">{loadError}</p>}
-        </section>
+        </div>
+      </header>
 
-        {/* ── Loaded Shortlist ─────────────────────────────────────────────── */}
-        {loadedShortlist && (
-          <section className="space-y-4">
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
-              Shortlist {loadedShortlist.id.slice(0, 8)}…
-            </h2>
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-8">
 
-            <div className="rounded-lg border border-gray-200 bg-white px-5 py-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
-              <div>
-                <span className="text-gray-400">Need ID </span>
-                <span className="font-mono text-xs text-gray-700">
-                  {loadedShortlist.company_need_id.slice(0, 8)}…
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-400">Shortlisted </span>
-                <span className="font-semibold text-gray-900">
-                  {loadedShortlist.total_shortlisted}/{loadedShortlist.total_candidates}
-                </span>
-              </div>
-              <div className="text-gray-500 italic">{loadedShortlist.summary}</div>
-            </div>
-
-            <div className="space-y-3">
-              {loadedShortlist.entries.map((entry) => {
-                const cs = loadedContactMap[entry.id] ?? {
-                  status: entry.contact_status,
-                  note:   entry.recruiter_note ?? '',
-                };
-                return (
-                  <LoadedEntryCard
-                    key={entry.id}
-                    entry={entry}
-                    contactStatus={cs.status}
-                    note={cs.note}
-                    onStatusChange={(s) => handleStatusChange(entry.id, s, true)}
-                    onNoteChange={(n) => handleNoteChange(entry.id, n, true)}
-                    onNoteSave={() => handleNoteSave(entry.id, cs.note)}
-                  />
-                );
-              })}
-            </div>
-          </section>
+        {/* ── Boot error ──────────────────────────────────────────────────────── */}
+        {fetchError && (
+          <div className="rounded-lg bg-red-950/40 border border-red-800/50 px-4 py-3 text-sm text-red-400">
+            Error: {fetchError}. Check RECRUITER_API_KEY and Supabase configuration.
+          </div>
         )}
 
+        {data && (
+          <>
+            {/* ── Warnings ──────────────────────────────────────────────────── */}
+            {data.warnings.length > 0 && (
+              <Section label="Warnings">
+                <div className="space-y-2">
+                  {data.warnings.map((w, i) => (
+                    <WarningRow key={i} warning={w} />
+                  ))}
+                </div>
+              </Section>
+            )}
+
+            {/* ── Pending Approvals ─────────────────────────────────────────── */}
+            <Section
+              label="Pending Approvals"
+              count={data.pendingActions.length + data.failedActions.length}
+            >
+              {data.pendingActions.length === 0 && data.failedActions.length === 0 ? (
+                <p className="text-sm text-slate-600">Nothing requires attention.</p>
+              ) : (
+                <div className="space-y-2">
+                  {data.pendingActions.map((a) => (
+                    <ApprovalCard
+                      key={a.id}
+                      action={a}
+                      busy={actioning[a.id] ?? false}
+                      onApprove={() => handleAction(a.id, 'approve')}
+                      onCancel={()  => handleAction(a.id, 'cancel')}
+                    />
+                  ))}
+                  {data.failedActions.map((a) => (
+                    <FailedCard
+                      key={a.id}
+                      action={a}
+                      busy={actioning[a.id] ?? false}
+                      onRetry={() => handleRetry(a.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </Section>
+
+            {/* ── Live Pipeline Feed ────────────────────────────────────────── */}
+            <Section label="Live Feed">
+              {data.recentActions.length === 0 ? (
+                <p className="text-sm text-slate-600">No pipeline activity recorded yet.</p>
+              ) : (
+                <div className="rounded-lg bg-slate-900 border border-slate-800 overflow-hidden divide-y divide-slate-800/70">
+                  {data.recentActions.map((a) => (
+                    <FeedRow key={a.id} action={a} />
+                  ))}
+                </div>
+              )}
+            </Section>
+
+            {/* ── Today's Metrics ───────────────────────────────────────────── */}
+            <Section label="Today">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <MetricCard label="Match runs"    value={data.today.matchRuns}     />
+                <MetricCard label="Suggested"     value={data.today.suggested}     />
+                <MetricCard label="Contacted"     value={data.today.contacted}     accent="emerald" />
+                <MetricCard label="Skipped"       value={data.today.skipped}       />
+                <MetricCard label="Follow-ups"    value={data.today.followUpsSent} accent="blue" />
+                <MetricCard label="Errors"        value={data.today.errors}        accent={data.today.errors > 0 ? 'red' : undefined} />
+              </div>
+            </Section>
+
+            {/* ── Pipeline State ────────────────────────────────────────────── */}
+            <Section label="Pipeline">
+              <div className="rounded-lg bg-slate-900 border border-slate-800 px-5 py-5">
+                <div className="flex flex-wrap items-center gap-3">
+                  <PipelineStep label="Pool"        count={data.pipeline.totalDrivers} color="text-slate-400" />
+                  <PipelineArrow />
+                  <PipelineStep label="Shortlisted" count={data.pipeline.shortlisted}  color="text-blue-400"  />
+                  <PipelineArrow />
+                  <PipelineStep label="Contacted"   count={data.pipeline.contacted}    color="text-amber-400" />
+                  <PipelineArrow />
+                  <PipelineStep label="Interested"  count={data.pipeline.interested}   color="text-emerald-400" />
+                </div>
+              </div>
+            </Section>
+          </>
+        )}
       </main>
     </div>
   );
@@ -430,243 +361,337 @@ export default function RecruiterPage() {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function KV({ k, v, urgency }: { k: string; v: string; urgency?: boolean }) {
-  const valueEl = urgency ? (
-    <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${
-      v === 'emergency' ? 'bg-red-100 text-red-700'     :
-      v === 'urgent'    ? 'bg-amber-100 text-amber-700' :
-                          'bg-gray-100 text-gray-600'
-    }`}>{v}</span>
-  ) : (
-    <span className="font-medium text-gray-800">{v}</span>
-  );
-
+function Section({
+  label,
+  count,
+  children,
+}: {
+  label:    string;
+  count?:   number;
+  children: React.ReactNode;
+}) {
   return (
-    <span>
-      <span className="text-gray-400">{k}: </span>
-      {valueEl}
+    <section>
+      <div className="flex items-center gap-2 mb-3">
+        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+          {label}
+        </h2>
+        {count !== undefined && count > 0 && (
+          <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold tabular-nums border border-amber-500/30">
+            {count}
+          </span>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function StatusPill({ status }: { status: 'operational' | 'degraded' | 'critical' }) {
+  const styles = {
+    operational: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+    degraded:    'bg-amber-500/10   text-amber-400   border-amber-500/30',
+    critical:    'bg-red-500/10     text-red-400     border-red-500/30',
+  };
+  const dots = {
+    operational: 'bg-emerald-500',
+    degraded:    'bg-amber-500',
+    critical:    'bg-red-500',
+  };
+  const labels = {
+    operational: 'Operational',
+    degraded:    'Degraded',
+    critical:    'Needs attention',
+  };
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full border ${styles[status]}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${dots[status]} ${status === 'operational' ? 'animate-pulse' : ''}`} />
+      {labels[status]}
     </span>
   );
 }
 
-const STATUS_LABELS: Record<ContactStatus, string> = {
-  new:            'New',
-  contacted:      'Contacted',
-  interested:     'Interested',
-  not_interested: 'Not interested',
-};
-
-const STATUS_ACTIVE_CLASS: Record<ContactStatus, string> = {
-  new:            'bg-gray-100 text-gray-600',
-  contacted:      'bg-blue-100 text-blue-700',
-  interested:     'bg-green-100 text-green-700',
-  not_interested: 'bg-red-100 text-red-700',
-};
-
-function ContactPanel({
-  contactStatus,
-  note,
-  onStatusChange,
-  onNoteChange,
-  onNoteSave,
+function StatBadge({
+  label,
+  value,
+  variant = 'default',
 }: {
-  contactStatus:  ContactStatus;
-  note:           string;
-  onStatusChange: (s: ContactStatus) => void;
-  onNoteChange:   (n: string) => void;
-  onNoteSave:     () => void;
+  label:    string;
+  value:    number;
+  variant?: 'default' | 'amber' | 'red';
+}) {
+  const styles = {
+    default: 'bg-slate-800/60 text-slate-300 border-slate-700/50',
+    amber:   'bg-amber-500/10 text-amber-300 border-amber-500/30',
+    red:     'bg-red-500/10   text-red-300   border-red-500/30',
+  };
+  return (
+    <span className={`inline-flex items-baseline gap-1.5 text-xs px-2.5 py-1 rounded-md border font-mono tabular-nums ${styles[variant]}`}>
+      <span className="font-bold">{value}</span>
+      <span className="text-slate-500 font-sans">{label}</span>
+    </span>
+  );
+}
+
+function WarningRow({ warning }: { warning: Warning }) {
+  const isError = warning.severity === 'error';
+  return (
+    <div className={`flex gap-3 rounded-lg border px-4 py-3 ${
+      isError
+        ? 'bg-red-950/30 border-red-800/50'
+        : 'bg-amber-950/20 border-amber-800/40'
+    }`}>
+      <span className={`flex-shrink-0 mt-0.5 font-mono text-sm ${isError ? 'text-red-400' : 'text-amber-400'}`}>
+        {isError ? '✕' : '⚠'}
+      </span>
+      <div className="min-w-0">
+        <p className={`text-sm font-medium ${isError ? 'text-red-300' : 'text-amber-300'}`}>
+          {warning.message}
+        </p>
+        <p className={`text-xs font-mono mt-0.5 ${isError ? 'text-red-600' : 'text-amber-700'}`}>
+          {warning.type}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ApprovalCard({
+  action,
+  busy,
+  onApprove,
+  onCancel,
+}: {
+  action:    SystemActionRow;
+  busy:      boolean;
+  onApprove: () => void;
+  onCancel:  () => void;
+}) {
+  const name    = action.input?.first_name as string | undefined;
+  const company = action.input?.company_name as string | undefined;
+  const score   = typeof action.input?.match_score === 'number' ? action.input.match_score : null;
+  const urgency = getUrgency(action);
+  const isFollowUp = action.action_type === 'follow_up_triggered';
+
+  return (
+    <div className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-mono font-semibold text-cyan-400">
+              {actionLabel(action.action_type)}
+            </span>
+            {name && (
+              <span className="text-sm font-medium text-slate-100">{name}</span>
+            )}
+            {score !== null && (
+              <span className="text-xs font-bold text-blue-400 tabular-nums">
+                {score}
+              </span>
+            )}
+            {company && (
+              <span className="text-xs text-slate-500">→ {company}</span>
+            )}
+            {urgency && urgency !== 'standard' && (
+              <UrgencyBadge urgency={urgency} />
+            )}
+            {isFollowUp && !!action.input?.follow_up_reason && (
+              <span className="text-xs text-slate-500 italic">
+                {String(action.input.follow_up_reason).replace(/_/g, ' ')}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-600 font-mono mt-1">
+            {action.target_id.slice(0, 8)}… · {formatDate(action.created_at)}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={onApprove}
+            disabled={busy}
+            className="px-3 py-1.5 rounded-md bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold
+                       disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Approve
+          </button>
+          <button
+            onClick={onCancel}
+            disabled={busy}
+            className="px-3 py-1.5 rounded-md border border-slate-700 text-slate-400 text-xs font-semibold
+                       hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FailedCard({
+  action,
+  busy,
+  onRetry,
+}: {
+  action:  SystemActionRow;
+  busy:    boolean;
+  onRetry: () => void;
 }) {
   return (
-    <>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {(Object.keys(STATUS_LABELS) as ContactStatus[]).map((s) => (
-          <button
-            key={s}
-            onClick={() => onStatusChange(s)}
-            className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-              contactStatus === s
-                ? `${STATUS_ACTIVE_CLASS[s]} ring-1 ring-inset ring-current`
-                : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
-            }`}
-          >
-            {STATUS_LABELS[s]}
-          </button>
-        ))}
-      </div>
-      <div className="mt-2 flex gap-2">
-        <textarea
-          value={note}
-          onChange={(e) => onNoteChange(e.target.value)}
-          placeholder="Recruiter note…"
-          rows={2}
-          className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm text-gray-700
-                     resize-none focus:outline-none focus:ring-1 focus:ring-blue-400"
-        />
+    <div className="rounded-lg border border-red-800/50 bg-red-950/20 px-4 py-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono font-semibold text-red-400">
+              {actionLabel(action.action_type)}
+            </span>
+            <span className="text-xs text-slate-500">failed</span>
+          </div>
+          {action.error && (
+            <p className="text-xs text-red-500/80 mt-0.5 font-mono truncate">
+              {action.error.slice(0, 120)}
+            </p>
+          )}
+          <p className="text-xs text-slate-700 font-mono mt-1">
+            {action.target_id.slice(0, 8)}… · {formatDate(action.created_at)}
+          </p>
+        </div>
         <button
-          onClick={onNoteSave}
-          className="self-end px-3 py-1 rounded bg-gray-100 text-xs font-medium text-gray-600
-                     hover:bg-gray-200 transition-colors whitespace-nowrap"
+          onClick={onRetry}
+          disabled={busy}
+          className="flex-shrink-0 px-3 py-1.5 rounded-md border border-red-700/50 text-red-400 text-xs font-semibold
+                     hover:bg-red-900/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          Save note
+          Retry
         </button>
       </div>
-    </>
+    </div>
   );
 }
 
-function DriverCard({
-  rank,
-  entry,
-  contactStatus,
-  note,
-  onStatusChange,
-  onNoteChange,
-  onNoteSave,
-}: {
-  rank:           number;
-  entry:          MatchEntry;
-  contactStatus:  ContactStatus;
-  note:           string;
-  onStatusChange: (s: ContactStatus) => void;
-  onNoteChange:   (n: string) => void;
-  onNoteSave:     () => void;
-}) {
-  const { driver, score } = entry;
+function FeedRow({ action }: { action: SystemActionRow }) {
+  const icon = actionIcon(action.action_type);
+
+  const dotColor =
+    action.status === 'completed' ? 'text-emerald-500' :
+    action.status === 'pending'   ? 'text-amber-500'   :
+    action.status === 'failed'    ? 'text-red-500'      :
+    action.status === 'cancelled' ? 'text-slate-600'    :
+                                    'text-blue-400';
+
+  const rowBg =
+    action.status === 'failed'  ? 'bg-red-950/20'   :
+    action.status === 'pending' ? 'bg-amber-950/10' :
+                                  '';
+
+  const urgency     = getUrgency(action);
+  const skipReason  = action.action_type === 'contact_skipped' ? getSkipReason(action) : null;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-600 text-white
-                           text-xs font-bold flex items-center justify-center">
-            {rank}
+    <div className={`flex items-center gap-3 px-4 py-2 ${rowBg}`}>
+      {/* Icon */}
+      <span className={`flex-shrink-0 w-5 text-center text-xs font-mono ${dotColor}`}>
+        {icon}
+      </span>
+
+      {/* Label */}
+      <span className="flex-1 min-w-0 text-sm text-slate-300 truncate">
+        {actionLabel(action.action_type)}
+        {skipReason && (
+          <span className="ml-2 text-xs text-slate-600 font-mono">
+            [{skipReason}]
           </span>
-          <div>
-            <p className="font-semibold text-gray-900">{driver.contact.firstName}</p>
-            <p className="text-sm text-gray-500">{driver.contact.phone}</p>
-            {driver.contact.email && (
-              <p className="text-xs text-gray-400">{driver.contact.email}</p>
-            )}
-          </div>
-        </div>
-        <div className="text-right flex-shrink-0">
-          <p className="text-2xl font-bold text-blue-600">{score.total}</p>
-          <p className="text-xs text-gray-400">match score</p>
-        </div>
-      </div>
+        )}
+        {!!action.input?.first_name && (
+          <span className="ml-2 text-xs text-slate-500">
+            {String(action.input.first_name)}
+          </span>
+        )}
+        {!!action.result?.company_name && (
+          <span className="ml-2 text-xs text-slate-600">
+            → {String(action.result.company_name)}
+          </span>
+        )}
+        {action.error && (
+          <span className="ml-2 text-xs text-red-500 font-mono">
+            {action.error.slice(0, 60)}
+          </span>
+        )}
+      </span>
 
-      <div className="mt-3 grid grid-cols-3 sm:grid-cols-7 gap-2">
-        <Pill label="License"      value={driver.license} />
-        <Pill label="YKB"          value={driver.ykb} />
-        <Pill label="Driver card"  value={driver.driverCard} />
-        <Pill label="Region"       value={driver.location.region} />
-        <Pill label="Availability" value={driver.availability} />
-        <Pill label="Domain"       value={driver.domain ?? '—'} />
-        <Pill label="Shift"        value={driver.shiftPreference ?? '—'} />
-      </div>
-
-      {score.flags.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1">
-          {score.flags.map((flag) => (
-            <span key={flag}
-              className="rounded bg-amber-100 text-amber-700 text-xs px-2 py-0.5 font-medium">
-              {flag}
-            </span>
-          ))}
-        </div>
+      {/* Urgency badge */}
+      {urgency && urgency !== 'standard' && (
+        <UrgencyBadge urgency={urgency} />
       )}
 
-      <p className="mt-3 text-sm text-gray-500 italic">{score.summary}</p>
-
-      <ContactPanel
-        contactStatus={contactStatus}
-        note={note}
-        onStatusChange={onStatusChange}
-        onNoteChange={onNoteChange}
-        onNoteSave={onNoteSave}
-      />
-    </div>
-  );
-}
-
-function LoadedEntryCard({
-  entry,
-  contactStatus,
-  note,
-  onStatusChange,
-  onNoteChange,
-  onNoteSave,
-}: {
-  entry:          LoadedEntry;
-  contactStatus:  ContactStatus;
-  note:           string;
-  onStatusChange: (s: ContactStatus) => void;
-  onNoteChange:   (n: string) => void;
-  onNoteSave:     () => void;
-}) {
-  const snap = entry.driver_snapshot;
-
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-500 text-white
-                           text-xs font-bold flex items-center justify-center">
-            {entry.rank}
-          </span>
-          <div>
-            <p className="font-semibold text-gray-900">{snap.firstName}</p>
-            <p className="text-sm text-gray-500">{snap.phone}</p>
-            {snap.email && (
-              <p className="text-xs text-gray-400">{snap.email}</p>
-            )}
-          </div>
-        </div>
-        <div className="text-right flex-shrink-0">
-          <p className="text-2xl font-bold text-gray-500">{entry.match_score}</p>
-          <p className="text-xs text-gray-400">match score</p>
-        </div>
-      </div>
-
-      <div className="mt-3 grid grid-cols-3 sm:grid-cols-7 gap-2">
-        <Pill label="License"      value={snap.license} />
-        <Pill label="YKB"          value={snap.ykb} />
-        <Pill label="Driver card"  value={snap.driverCard} />
-        <Pill label="Region"       value={snap.region} />
-        <Pill label="Availability" value={snap.availability} />
-        <Pill label="Domain"       value={snap.domain ?? '—'} />
-        <Pill label="Shift"        value={snap.shiftPreference ?? '—'} />
-      </div>
-
-      {entry.flags.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1">
-          {entry.flags.map((flag) => (
-            <span key={flag}
-              className="rounded bg-amber-100 text-amber-700 text-xs px-2 py-0.5 font-medium">
-              {flag}
-            </span>
-          ))}
-        </div>
+      {/* Triggered by */}
+      {action.triggered_by === 'human' && (
+        <span className="text-xs text-slate-600 flex-shrink-0 font-mono">human</span>
       )}
 
-      <p className="mt-3 text-sm text-gray-500 italic">{entry.summary}</p>
-
-      <ContactPanel
-        contactStatus={contactStatus}
-        note={note}
-        onStatusChange={onStatusChange}
-        onNoteChange={onNoteChange}
-        onNoteSave={onNoteSave}
-      />
+      {/* Timestamp */}
+      <span className="text-xs text-slate-600 font-mono flex-shrink-0 tabular-nums">
+        {formatDate(action.created_at)}
+      </span>
     </div>
   );
 }
 
-function Pill({ label, value }: { label: string; value: string }) {
+function UrgencyBadge({ urgency }: { urgency: string }) {
+  const styles =
+    urgency === 'emergency'
+      ? 'bg-red-900/50 text-red-400 border-red-700/50'
+      : urgency === 'urgent'
+        ? 'bg-amber-900/40 text-amber-400 border-amber-700/40'
+        : 'bg-slate-800 text-slate-500 border-slate-700';
+
   return (
-    <div className="rounded bg-gray-50 border border-gray-100 px-2 py-1.5">
-      <p className="text-xs text-gray-400 leading-none mb-0.5">{label}</p>
-      <p className="text-sm font-medium text-gray-800 leading-tight">{value}</p>
+    <span className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded font-mono border ${styles}`}>
+      {urgency}
+    </span>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  accent,
+}: {
+  label:   string;
+  value:   number;
+  accent?: 'emerald' | 'blue' | 'red';
+}) {
+  const valueColor =
+    accent === 'emerald' ? 'text-emerald-400' :
+    accent === 'blue'    ? 'text-blue-400'    :
+    accent === 'red'     ? 'text-red-400'     :
+                           'text-slate-100';
+
+  return (
+    <div className="rounded-lg bg-slate-900 border border-slate-800 px-4 py-4">
+      <p className={`text-2xl font-bold tabular-nums ${valueColor}`}>{value}</p>
+      <p className="text-xs text-slate-600 mt-1">{label}</p>
     </div>
   );
+}
+
+function PipelineStep({
+  label,
+  count,
+  color,
+}: {
+  label: string;
+  count: number;
+  color: string;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-1 min-w-[64px]">
+      <span className={`text-2xl font-bold tabular-nums ${color}`}>{count}</span>
+      <span className="text-xs text-slate-600 text-center leading-tight">{label}</span>
+    </div>
+  );
+}
+
+function PipelineArrow() {
+  return <span className="text-slate-700 text-base select-none px-1">→</span>;
 }
