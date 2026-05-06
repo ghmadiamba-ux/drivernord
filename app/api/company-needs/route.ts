@@ -26,6 +26,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  const auth = requireRecruiterAuth(req);
+  if (!auth.ok) {
+    return NextResponse.json(auth.body, { status: auth.status });
+  }
+
   let body: unknown;
   try {
     body = await req.json();
