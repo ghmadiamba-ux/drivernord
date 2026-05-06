@@ -2,8 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateCompanyNeedInput } from '../../../lib/companyNeed';
 import { createCompany, createCompanyNeed, getOpenCompanyNeeds } from '../../../lib/companyNeedStore';
 import { requireRecruiterAuth } from '../../../lib/recruiterAuth';
+import { logAction } from '../../../lib/systemActions';
+import { runMatchingAgent } from '../../../lib/matchingAgent';
 
 export const dynamic = 'force-dynamic';
+
+// Runs after a successful need creation — not awaited by the HTTP handler.
+async function triggerMatchingForNeed(needId: string): Promise<void> {
+  await logAction({
+    action_type:  'need_ingested',
+    triggered_by: 'agent:company_need_ingestion',
+    target_type:  'company_need',
+    target_id:    needId,
+    status:       'completed',
+    input:        { need_id: needId },
+  });
+
+  void runMatchingAgent({ needId, triggeredBy: 'agent:company_need_ingestion' });
+}
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const auth = requireRecruiterAuth(req);
@@ -58,6 +74,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch {
     return NextResponse.json({ error: 'supabase_error' }, { status: 500 });
   }
+
+  void triggerMatchingForNeed(companyNeed.id);
 
   return NextResponse.json({ company, need: companyNeed }, { status: 201 });
 }
