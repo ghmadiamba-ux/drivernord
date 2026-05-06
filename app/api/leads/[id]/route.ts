@@ -1,10 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getLead, updateLead } from '../../../../lib/supabaseStore';
-
-export const dynamic = 'force-dynamic';
 import { applyStep } from '../../../../lib/applyStep';
 import type { StepId } from '../../../../lib/conversation';
 import { ingestLead } from '../../../../lib/ingestLead';
+import { logAction } from '../../../../lib/systemActions';
+import { getOpenCompanyNeeds } from '../../../../lib/companyNeedStore';
+import { runMatchingAgent } from '../../../../lib/matchingAgent';
+import type { DriverScore } from '../../../../lib/scoreDriver';
+
+export const dynamic = 'force-dynamic';
+
+// Runs after a successful ingest — not awaited by the HTTP handler.
+async function triggerMatchingForAllNeeds(
+  leadId:   string,
+  driverId: string,
+  score:    DriverScore,
+): Promise<void> {
+  await logAction({
+    action_type:  'driver_ingested',
+    triggered_by: 'agent:driver_ingestion',
+    target_type:  'driver',
+    target_id:    driverId,
+    status:       'completed',
+    input:  { lead_id: leadId },
+    result: { score },
+  });
+
+  let openNeeds;
+  try {
+    openNeeds = await getOpenCompanyNeeds();
+  } catch (err) {
+    console.error('[auto-match] failed to fetch open needs:', err);
+    return;
+  }
+
+  if (openNeeds.length === 0) {
+    console.log('[auto-match] driver ingested — no open needs, matching skipped');
+    return;
+  }
+
+  for (const need of openNeeds) {
+    void runMatchingAgent({ needId: need.id, triggeredBy: 'agent:driver_ingestion' });
+  }
+}
 
 export async function GET(
   _req: NextRequest,
@@ -65,6 +103,8 @@ export async function PATCH(
     const ingestResult = await ingestLead(result.lead.id);
     if (!ingestResult.ok) {
       console.error('[auto-ingest] failed for lead', result.lead.id, '—', ingestResult.error);
+    } else {
+      void triggerMatchingForAllNeeds(result.lead.id, ingestResult.driver.id, ingestResult.score);
     }
   }
 
