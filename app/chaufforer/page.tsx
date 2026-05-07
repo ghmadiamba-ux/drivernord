@@ -2,9 +2,23 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Chaufförsjobb utan CV-krångel | DriverNord',
+  metadataBase: new URL('https://drivernord.com'),
+  title: 'DriverNord — Chaufförsjobb utan CV-krångel',
   description:
-    'Registrera dig som chaufför på cirka 2 minuter. DriverNord matchar din profil med relevanta transportuppdrag baserat på körkort, YKB och tillgänglighet.',
+    'Registrera dig på cirka 2 minuter. DriverNord matchar chaufförer med relevanta transportuppdrag.',
+  openGraph: {
+    title:       'DriverNord — Chaufförsjobb utan CV-krångel',
+    description: 'Registrera dig på cirka 2 minuter. DriverNord matchar chaufförer med relevanta transportuppdrag.',
+    url:         'https://drivernord.com/chaufforer',
+    siteName:    'DriverNord',
+    locale:      'sv_SE',
+    type:        'website',
+  },
+  twitter: {
+    card:        'summary_large_image',
+    title:       'DriverNord — Chaufförsjobb utan CV-krångel',
+    description: 'Registrera dig på cirka 2 minuter. DriverNord matchar chaufförer med relevanta transportuppdrag.',
+  },
 };
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
