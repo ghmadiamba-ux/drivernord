@@ -11,9 +11,10 @@ export function requireRecruiterAuth(req: NextRequest): RecruiterAuthResult {
   }
 
   const headerKey = req.headers.get('x-recruiter-key');
-  if (!headerKey || headerKey !== envKey) {
-    return { ok: false, status: 401, body: { error: 'unauthorized' } };
-  }
+  if (headerKey && headerKey === envKey) return { ok: true };
 
-  return { ok: true };
+  const cookieKey = req.cookies.get('recruiter_session')?.value;
+  if (cookieKey && cookieKey === envKey) return { ok: true };
+
+  return { ok: false, status: 401, body: { error: 'unauthorized' } };
 }

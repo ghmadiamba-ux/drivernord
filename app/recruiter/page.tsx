@@ -151,13 +151,9 @@ export default function RecruiterPage() {
   const [actioning, setActioning]     = useState<Record<string, boolean>>({});
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const recruiterKey = process.env.NEXT_PUBLIC_RECRUITER_API_KEY ?? '';
-
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch('/api/cockpit', {
-        headers: { 'X-Recruiter-Key': recruiterKey },
-      });
+      const res = await fetch('/api/cockpit');
       if (!res.ok) {
         const err = await res.json() as { error?: string };
         setFetchError(err.error ?? 'fetch_failed');
@@ -171,7 +167,7 @@ export default function RecruiterPage() {
     } finally {
       setLoading(false);
     }
-  }, [recruiterKey]);
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -184,7 +180,7 @@ export default function RecruiterPage() {
     try {
       await fetch(`/api/cockpit/actions/${actionId}`, {
         method:  'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-Recruiter-Key': recruiterKey },
+        headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ action }),
       });
       await fetchData();
@@ -196,14 +192,16 @@ export default function RecruiterPage() {
   async function handleRetry(actionId: string) {
     setActioning((p) => ({ ...p, [actionId]: true }));
     try {
-      await fetch(`/api/cockpit/actions/${actionId}/retry`, {
-        method:  'POST',
-        headers: { 'X-Recruiter-Key': recruiterKey },
-      });
+      await fetch(`/api/cockpit/actions/${actionId}/retry`, { method: 'POST' });
       await fetchData();
     } catch { /* ignore */ } finally {
       setActioning((p) => ({ ...p, [actionId]: false }));
     }
+  }
+
+  async function handleLogout() {
+    await fetch('/api/recruiter/auth', { method: 'DELETE' });
+    window.location.href = '/recruiter/login';
   }
 
   const systemStatus: 'operational' | 'degraded' | 'critical' =
@@ -249,13 +247,21 @@ export default function RecruiterPage() {
               </div>
             )}
 
-            {/* Last updated */}
-            <div className="ml-auto text-xs text-slate-600 tabular-nums">
-              {lastUpdated
-                ? `Updated ${formatTime(lastUpdated.toISOString())}`
-                : loading
-                  ? 'Loading…'
-                  : ''}
+            {/* Last updated + logout */}
+            <div className="ml-auto flex items-center gap-3">
+              <span className="text-xs text-slate-600 tabular-nums">
+                {lastUpdated
+                  ? `Updated ${formatTime(lastUpdated.toISOString())}`
+                  : loading
+                    ? 'Loading…'
+                    : ''}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="text-xs text-slate-600 hover:text-slate-400 transition-colors"
+              >
+                Sign out
+              </button>
             </div>
           </div>
         </div>
