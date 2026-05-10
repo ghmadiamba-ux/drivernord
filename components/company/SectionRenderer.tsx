@@ -1,7 +1,10 @@
 import type { SectionDefinition, TranslationMap } from '@/lib/company/types'
 import HeroSection from './sections/HeroSection'
 import ProblemSection from './sections/ProblemSection'
+import SystemSection from './sections/SystemSection'
+import WhyTransportSection from './sections/WhyTransportSection'
 import HowItWorksSection from './sections/HowItWorksSection'
+import CockpitSection from './sections/CockpitSection'
 import DifferentiationSection from './sections/DifferentiationSection'
 import AudienceSection from './sections/AudienceSection'
 import MediaSection from './sections/MediaSection'
@@ -21,8 +24,14 @@ export default function SectionRenderer({ section, t }: Props) {
       return <HeroSection section={section} t={t} />
     case 'problem':
       return <ProblemSection section={section} t={t} />
+    case 'system':
+      return <SystemSection section={section} t={t} />
+    case 'why-transport':
+      return <WhyTransportSection section={section} t={t} />
     case 'how-it-works':
       return <HowItWorksSection section={section} t={t} />
+    case 'cockpit':
+      return <CockpitSection section={section} t={t} />
     case 'differentiation':
       return <DifferentiationSection section={section} t={t} />
     case 'audience':

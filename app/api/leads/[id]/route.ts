@@ -6,6 +6,7 @@ import { ingestLead } from '../../../../lib/ingestLead';
 import { logAction } from '../../../../lib/systemActions';
 import { getOpenCompanyNeeds } from '../../../../lib/companyNeedStore';
 import { runMatchingAgent } from '../../../../lib/matchingAgent';
+import { requireRecruiterAuth } from '../../../../lib/recruiterAuth';
 import type { DriverScore } from '../../../../lib/scoreDriver';
 
 export const dynamic = 'force-dynamic';
@@ -45,9 +46,12 @@ async function triggerMatchingForAllNeeds(
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
+  const auth = requireRecruiterAuth(req);
+  if (!auth.ok) return NextResponse.json(auth.body, { status: auth.status });
+
   let lead;
   try {
     lead = await getLead(params.id);

@@ -2,6 +2,7 @@
 
 import { useState, FormEvent, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { LegalFooter } from '@/components/LegalFooter';
 
 function LoginForm() {
   const router       = useRouter();
@@ -74,13 +75,16 @@ function LoginForm() {
 
 export default function RecruiterLoginPage() {
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <h1 className="text-slate-100 text-lg font-bold mb-6 tracking-tight">DriverNord</h1>
-        <Suspense>
-          <LoginForm />
-        </Suspense>
+    <div className="min-h-screen bg-slate-950 flex flex-col">
+      <div className="flex-1 flex flex-col items-center justify-center px-4">
+        <div className="w-full max-w-sm">
+          <h1 className="text-slate-100 text-lg font-bold mb-6 tracking-tight">DriverNord</h1>
+          <Suspense>
+            <LoginForm />
+          </Suspense>
+        </div>
       </div>
+      <LegalFooter />
     </div>
   );
 }

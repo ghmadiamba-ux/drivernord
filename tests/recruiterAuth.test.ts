@@ -5,7 +5,22 @@ import { requireRecruiterAuth } from '../lib/recruiterAuth';
 function makeReq(key?: string): NextRequest {
   const headers = new Headers();
   if (key !== undefined) headers.set('x-recruiter-key', key);
-  return { headers } as unknown as NextRequest;
+  return {
+    headers,
+    cookies: { get: () => undefined },
+  } as unknown as NextRequest;
+}
+
+function makeCookieReq(cookieValue?: string): NextRequest {
+  return {
+    headers: new Headers(),
+    cookies: {
+      get: (name: string) =>
+        name === 'recruiter_session' && cookieValue !== undefined
+          ? { value: cookieValue }
+          : undefined,
+    },
+  } as unknown as NextRequest;
 }
 
 afterEach(() => {
@@ -71,5 +86,38 @@ describe('requireRecruiterAuth — ok', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.status).toBe(401);
+  });
+});
+
+// ─── cookie-based auth ────────────────────────────────────────────────────────
+
+describe('requireRecruiterAuth — cookie', () => {
+  it('returns ok:true when recruiter_session cookie matches env var', () => {
+    vi.stubEnv('RECRUITER_API_KEY', 'test-secret');
+    const result = requireRecruiterAuth(makeCookieReq('test-secret'));
+    expect(result.ok).toBe(true);
+  });
+
+  it('returns 401 when recruiter_session cookie is wrong', () => {
+    vi.stubEnv('RECRUITER_API_KEY', 'test-secret');
+    const result = requireRecruiterAuth(makeCookieReq('wrong-value'));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.status).toBe(401);
+    expect(result.body.error).toBe('unauthorized');
+  });
+
+  it('returns 401 when no header and no cookie', () => {
+    vi.stubEnv('RECRUITER_API_KEY', 'test-secret');
+    const result = requireRecruiterAuth(makeCookieReq());
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.status).toBe(401);
+  });
+
+  it('header takes precedence — correct header overrides absent cookie', () => {
+    vi.stubEnv('RECRUITER_API_KEY', 'test-secret');
+    const result = requireRecruiterAuth(makeReq('test-secret'));
+    expect(result.ok).toBe(true);
   });
 });

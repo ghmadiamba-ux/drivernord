@@ -9,6 +9,7 @@ interface ChatState {
   lang: 'sv' | 'en';
   loading: boolean;
   error: string | null;
+  leadPriority: 'HIGH' | 'MEDIUM' | 'LOW' | null;
 }
 
 export function useChat() {
@@ -18,6 +19,7 @@ export function useChat() {
     lang: 'sv',
     loading: false,
     error: null,
+    leadPriority: null,
   });
 
   // Always-current reference used inside stable callbacks to avoid stale closures
@@ -32,12 +34,21 @@ export function useChat() {
     if (confirmedRef.current || !leadId) return;
     confirmedRef.current = true;
 
-    // Fire-and-forget: even if this fails, the lead is captured up to 'name'
+    // Capture lead_priority from the confirmation PATCH response.
+    // Even if this fails, the lead is already captured up to 'name'.
     fetch(`/api/leads/${leadId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ step: 'confirmation', answer: null }),
-    }).catch(() => undefined);
+    })
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => {
+        const priority = data?.lead_priority as 'HIGH' | 'MEDIUM' | 'LOW' | undefined;
+        if (priority) {
+          setState((s) => ({ ...s, leadPriority: priority }));
+        }
+      })
+      .catch(() => undefined);
   }, []);
 
   const submitAnswer = useCallback(async (answer: string | null) => {
@@ -85,6 +96,7 @@ export function useChat() {
     lang: state.lang,
     loading: state.loading,
     error: state.error,
+    leadPriority: state.leadPriority,
     submitAnswer,
     confirmLead,
   };

@@ -126,7 +126,10 @@ export type Block =
 export type SectionType =
   | 'hero'
   | 'problem'
+  | 'system'
+  | 'why-transport'
   | 'how-it-works'
+  | 'cockpit'
   | 'differentiation'
   | 'audience'
   | 'media'

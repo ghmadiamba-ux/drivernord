@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'DriverNord — Matchning av förare och åkeriföretag',
+  title: 'DriverNord — Hitta kvalificerade chaufförer snabbare',
   description:
-    'DriverNord samlar in strukturerad förarinformation och matchar mot åkeriföretagens krav.',
+    'DriverNord samlar in och kvalificerar chaufförsprofiler med körkort C/CE/D och YKB. Du får ett strukturerat underlag — redo för kontakt.',
 }
 
 export default function CompanyLayout({ children }: { children: React.ReactNode }) {

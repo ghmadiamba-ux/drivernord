@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getLead } from '../../../../../lib/supabaseStore';
+import { requireRecruiterAuth } from '../../../../../lib/recruiterAuth';
 
 export const dynamic = 'force-dynamic';
 import { buildDriverProfile } from '../../../../../lib/driverProfile';
@@ -42,9 +43,12 @@ async function resolvePipeline(id: string): Promise<PipelineResult> {
 
 // GET — pure read, no side effects
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
+  const auth = requireRecruiterAuth(req);
+  if (!auth.ok) return NextResponse.json(auth.body, { status: auth.status });
+
   const result = await resolvePipeline(params.id);
   if ('response' in result) return result.response;
   return NextResponse.json({ driver: result.driver, score: result.score });
@@ -52,9 +56,11 @@ export async function GET(
 
 // POST — ingest + score: persists to ingested_drivers with explicit failure response
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
+  const auth = requireRecruiterAuth(req);
+  if (!auth.ok) return NextResponse.json(auth.body, { status: auth.status });
   const result = await ingestLead(params.id);
 
   if (!result.ok) {
