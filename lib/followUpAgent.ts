@@ -1,5 +1,6 @@
 import { db } from './db';
 import { logAction } from './systemActions';
+import { getMessagingProvider } from './messaging';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -129,6 +130,7 @@ async function suggest(
   phone:     string,
   result:    FollowUpAgentResult,
 ): Promise<void> {
+  const message = buildMessage(firstName, driver.follow_up_reason);
   await logAction({
     action_type:  'follow_up_triggered',
     triggered_by: 'agent:followup',
@@ -138,6 +140,7 @@ async function suggest(
     input: {
       first_name:       firstName,
       phone,
+      message,
       follow_up_reason: driver.follow_up_reason,
       follow_up_at:     driver.follow_up_at,
     },
@@ -153,14 +156,27 @@ async function autoSend(
   phone:     string,
   result:    FollowUpAgentResult,
 ): Promise<void> {
-  const message = buildMessage(firstName, driver.follow_up_reason);
+  const message    = buildMessage(firstName, driver.follow_up_reason);
+  const provider   = getMessagingProvider();
+  const sendResult = await provider.sendMessage({ to: phone, body: message });
 
-  console.log(
-    `[followUpAgent] SIMULATED SEND to ${phone}\n` +
-    `─────────────────────────────\n` +
-    message +
-    `\n─────────────────────────────`,
-  );
+  if (!sendResult.ok) {
+    await logAction({
+      action_type:  'follow_up_sent',
+      triggered_by: 'agent:followup',
+      target_type:  'driver',
+      target_id:    driver.id,
+      status:       'failed',
+      error:        sendResult.error,
+      input: {
+        follow_up_reason: driver.follow_up_reason,
+        follow_up_at:     driver.follow_up_at,
+      },
+      result: { channel: sendResult.channel },
+    });
+    result.errors++;
+    return;
+  }
 
   await db.from('drivers').update({ follow_up_sent: true }).eq('id', driver.id);
 
@@ -175,8 +191,9 @@ async function autoSend(
       follow_up_at:     driver.follow_up_at,
     },
     result: {
-      channel:         'simulated',
+      channel:         sendResult.channel,
       message_preview: message.slice(0, 80),
+      ...(sendResult.messageId ? { message_id: sendResult.messageId } : {}),
     },
   });
 

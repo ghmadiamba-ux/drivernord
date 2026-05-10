@@ -3,6 +3,7 @@ import { requireRecruiterAuth } from '../../../../../lib/recruiterAuth';
 import { db } from '../../../../../lib/db';
 import { logAction } from '../../../../../lib/systemActions';
 import { updateShortlistEntry } from '../../../../../lib/shortlistStore';
+import { getMessagingProvider } from '../../../../../lib/messaging';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,30 +90,85 @@ export async function PATCH(
 async function executeApproval(row: Record<string, unknown>): Promise<void> {
   const actionType = row.action_type as string;
   const targetId   = row.target_id as string;
+  const input      = (row.input ?? {}) as Record<string, unknown>;
 
   if (actionType === 'contact_suggested') {
-    await updateShortlistEntry(targetId, { contact_status: 'contacted' });
-    await logAction({
-      action_type:  'contact_confirmed',
-      triggered_by: 'human',
-      target_type:  'shortlist_entry',
-      target_id:    targetId,
-      status:       'completed',
-      input:        { approved_action_id: row.id as string },
-    });
+    const phone   = input.phone   as string | undefined;
+    const message = input.message as string | undefined;
+
+    if (phone && message) {
+      const provider   = getMessagingProvider();
+      const sendResult = await provider.sendMessage({ to: phone, body: message });
+
+      if (!sendResult.ok) {
+        throw new Error(`send_failed: ${sendResult.error ?? 'unknown'}`);
+      }
+
+      await updateShortlistEntry(targetId, { contact_status: 'contacted' });
+      await logAction({
+        action_type:  'contact_confirmed',
+        triggered_by: 'human',
+        target_type:  'shortlist_entry',
+        target_id:    targetId,
+        status:       'completed',
+        input:  { approved_action_id: row.id as string },
+        result: {
+          channel: sendResult.channel,
+          ...(sendResult.messageId ? { message_id: sendResult.messageId } : {}),
+        },
+      });
+    } else {
+      // Legacy: action created before message was stored in input — mark contacted only
+      await updateShortlistEntry(targetId, { contact_status: 'contacted' });
+      await logAction({
+        action_type:  'contact_confirmed',
+        triggered_by: 'human',
+        target_type:  'shortlist_entry',
+        target_id:    targetId,
+        status:       'completed',
+        input: { approved_action_id: row.id as string },
+      });
+    }
     return;
   }
 
   if (actionType === 'follow_up_triggered') {
-    await db.from('drivers').update({ follow_up_sent: true }).eq('id', targetId);
-    await logAction({
-      action_type:  'follow_up_confirmed',
-      triggered_by: 'human',
-      target_type:  'driver',
-      target_id:    targetId,
-      status:       'completed',
-      input:        { approved_action_id: row.id as string },
-    });
+    const phone   = input.phone   as string | undefined;
+    const message = input.message as string | undefined;
+
+    if (phone && message) {
+      const provider   = getMessagingProvider();
+      const sendResult = await provider.sendMessage({ to: phone, body: message });
+
+      if (!sendResult.ok) {
+        throw new Error(`send_failed: ${sendResult.error ?? 'unknown'}`);
+      }
+
+      await db.from('drivers').update({ follow_up_sent: true }).eq('id', targetId);
+      await logAction({
+        action_type:  'follow_up_confirmed',
+        triggered_by: 'human',
+        target_type:  'driver',
+        target_id:    targetId,
+        status:       'completed',
+        input:  { approved_action_id: row.id as string },
+        result: {
+          channel: sendResult.channel,
+          ...(sendResult.messageId ? { message_id: sendResult.messageId } : {}),
+        },
+      });
+    } else {
+      // Legacy: no message stored — mark follow-up sent only
+      await db.from('drivers').update({ follow_up_sent: true }).eq('id', targetId);
+      await logAction({
+        action_type:  'follow_up_confirmed',
+        triggered_by: 'human',
+        target_type:  'driver',
+        target_id:    targetId,
+        status:       'completed',
+        input: { approved_action_id: row.id as string },
+      });
+    }
     return;
   }
 

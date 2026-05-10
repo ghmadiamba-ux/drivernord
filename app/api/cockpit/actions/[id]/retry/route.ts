@@ -3,6 +3,7 @@ import { requireRecruiterAuth } from '../../../../../../lib/recruiterAuth';
 import { db } from '../../../../../../lib/db';
 import { logAction } from '../../../../../../lib/systemActions';
 import { updateShortlistEntry } from '../../../../../../lib/shortlistStore';
+import { getMessagingProvider } from '../../../../../../lib/messaging';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,8 +55,20 @@ async function retryAction(row: Record<string, unknown>, now: string): Promise<v
   const actionType = row.action_type as string;
   const targetId   = row.target_id as string;
   const actionId   = row.id as string;
+  const input      = (row.input ?? {}) as Record<string, unknown>;
 
   if (actionType === 'contact_suggested' || actionType === 'contact_sent') {
+    const phone   = input.phone   as string | undefined;
+    const message = input.message as string | undefined;
+
+    if (phone && message) {
+      const provider   = getMessagingProvider();
+      const sendResult = await provider.sendMessage({ to: phone, body: message });
+      if (!sendResult.ok) {
+        throw new Error(`send_failed: ${sendResult.error ?? 'unknown'}`);
+      }
+    }
+
     await updateShortlistEntry(targetId, { contact_status: 'contacted' });
     await db
       .from('system_actions')
@@ -65,6 +78,17 @@ async function retryAction(row: Record<string, unknown>, now: string): Promise<v
   }
 
   if (actionType === 'follow_up_triggered' || actionType === 'follow_up_sent') {
+    const phone   = input.phone   as string | undefined;
+    const message = input.message as string | undefined;
+
+    if (phone && message) {
+      const provider   = getMessagingProvider();
+      const sendResult = await provider.sendMessage({ to: phone, body: message });
+      if (!sendResult.ok) {
+        throw new Error(`send_failed: ${sendResult.error ?? 'unknown'}`);
+      }
+    }
+
     await db.from('drivers').update({ follow_up_sent: true }).eq('id', targetId);
     await db
       .from('system_actions')

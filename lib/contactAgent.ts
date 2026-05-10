@@ -1,6 +1,7 @@
 import { db } from './db';
 import { logAction } from './systemActions';
 import { updateShortlistEntry } from './shortlistStore';
+import { getMessagingProvider } from './messaging';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -266,6 +267,7 @@ async function suggestContact(
   phone:     string,
   result:    ContactAgentResult,
 ): Promise<void> {
+  const message = buildMessage(firstName, ctx);
   await logAction({
     action_type:  'contact_suggested',
     triggered_by: 'agent:contact',
@@ -277,6 +279,7 @@ async function suggestContact(
       match_score:     entry.match_score,
       first_name:      firstName,
       phone,
+      message,
       company_name:    ctx.company_name,
       urgency:         ctx.urgency,
       company_need_id: ctx.company_need_id,
@@ -295,20 +298,34 @@ async function autoContact(
   phone:     string,
   result:    ContactAgentResult,
 ): Promise<void> {
-  const message = buildMessage(firstName, ctx);
+  const message    = buildMessage(firstName, ctx);
+  const provider   = getMessagingProvider();
+  const sendResult = await provider.sendMessage({ to: phone, body: message });
 
-  // Simulate send — no SMS provider yet
-  console.log(
-    `[contactAgent] SIMULATED SEND to ${phone}\n` +
-    `─────────────────────────────\n` +
-    message +
-    `\n─────────────────────────────`,
-  );
+  if (!sendResult.ok) {
+    await logAction({
+      action_type:  'contact_sent',
+      triggered_by: 'agent:contact',
+      target_type:  'driver',
+      target_id:    entry.driver_id,
+      status:       'failed',
+      error:        sendResult.error,
+      input: {
+        match_score:        entry.match_score,
+        shortlist_entry_id: entry.id,
+        first_name:         firstName,
+        urgency:            ctx.urgency,
+        company_need_id:    ctx.company_need_id,
+        shortlist_id:       ctx.shortlist_id,
+      },
+      result: { channel: sendResult.channel },
+    });
+    result.errors++;
+    return;
+  }
 
-  // Update entry status
   await updateShortlistEntry(entry.id, { contact_status: 'contacted' });
 
-  // Log
   await logAction({
     action_type:  'contact_sent',
     triggered_by: 'agent:contact',
@@ -316,17 +333,18 @@ async function autoContact(
     target_id:    entry.driver_id,
     status:       'completed',
     input: {
-      match_score:          entry.match_score,
-      shortlist_entry_id:   entry.id,
-      first_name:           firstName,
-      urgency:              ctx.urgency,
-      company_need_id:      ctx.company_need_id,
-      shortlist_id:         ctx.shortlist_id,
+      match_score:        entry.match_score,
+      shortlist_entry_id: entry.id,
+      first_name:         firstName,
+      urgency:            ctx.urgency,
+      company_need_id:    ctx.company_need_id,
+      shortlist_id:       ctx.shortlist_id,
     },
     result: {
-      channel:         'simulated',
+      channel:         sendResult.channel,
       company_name:    ctx.company_name,
       message_preview: message.slice(0, 80),
+      ...(sendResult.messageId ? { message_id: sendResult.messageId } : {}),
     },
   });
 
