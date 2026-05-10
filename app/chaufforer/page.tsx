@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
+import { PublicHeader } from '@/components/PublicHeader';
+import { LegalFooter } from '@/components/LegalFooter';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://drivernord.com'),
@@ -44,47 +47,50 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─── Nav ──────────────────────────────────────────────────────────────────────
-
-function Nav() {
-  return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-blue-100">
-      <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between">
-        <Link href="/chaufforer" className="text-blue-900 font-bold text-lg">
-          DriverNord
-        </Link>
-        <Link
-          href="/chat"
-          className="text-sm font-semibold text-blue-700 hover:text-blue-900 transition-colors"
-        >
-          Starta registrering →
-        </Link>
-      </div>
-    </nav>
-  );
-}
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 
 function Hero() {
   return (
     <section className="bg-blue-900">
-      <div className="max-w-3xl mx-auto px-5 py-20 md:py-28">
-        <p className="text-xs font-semibold uppercase tracking-widest text-blue-400 mb-5">
-          För professionella chaufförer
-        </p>
-        <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-6">
-          Chaufförsjobb utan CV-krångel.
-        </h1>
-        <p className="text-blue-200 text-base md:text-lg leading-relaxed mb-8 max-w-xl">
-          Registrera dig på cirka 2 minuter. Vi frågar om körkort, YKB och
-          tillgänglighet — sedan matchar DriverNord din profil med relevanta
-          transportuppdrag.
-        </p>
-        <CTAButton />
-        <p className="mt-4 text-blue-400 text-sm">
-          Inget konto. Inget CV först. Mobilanpassat.
-        </p>
+      <div className="max-w-6xl mx-auto px-5 py-20 md:py-28">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+
+          {/* Text column */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-blue-400 mb-5">
+              För professionella chaufförer
+            </p>
+            <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-6">
+              Chaufförsjobb utan CV-krångel.
+            </h1>
+            <p className="text-blue-200 text-base md:text-lg leading-relaxed mb-8 max-w-xl">
+              Registrera dig på cirka 2 minuter. Vi frågar om körkort, YKB och
+              tillgänglighet — sedan matchar DriverNord din profil med relevanta
+              transportuppdrag.
+            </p>
+            <CTAButton />
+            <p className="mt-4 text-blue-400 text-sm">
+              Inget konto. Inget CV först. Mobilanpassat.
+            </p>
+          </div>
+
+          {/* Image column — hidden on mobile, shown on desktop */}
+          <div className="hidden lg:block">
+            <div className="relative rounded-2xl overflow-hidden bg-blue-800/50 aspect-[3/4] max-w-sm ml-auto">
+              <Image
+                src="/images/driver-hero.jpg"
+                alt="Yrkesförare i DriverNord-kläder vid lastbil i svensk logistikmiljö"
+                fill
+                className="object-cover object-center"
+                priority
+                sizes="(max-width: 1024px) 0vw, 33vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-transparent pointer-events-none" />
+            </div>
+          </div>
+
+        </div>
       </div>
     </section>
   );
@@ -330,38 +336,13 @@ function FinalCTA() {
   );
 }
 
-// ─── Footer ───────────────────────────────────────────────────────────────────
-
-function Footer() {
-  return (
-    <footer className="bg-blue-900 border-t border-blue-800">
-      <div className="max-w-5xl mx-auto px-5 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
-        <p className="text-blue-400 text-sm">DriverNord © 2025</p>
-        <div className="flex items-center gap-5 text-sm">
-          <Link
-            href="/company"
-            className="text-blue-300 hover:text-white transition-colors"
-          >
-            För transportföretag
-          </Link>
-          <Link
-            href="/chat"
-            className="text-blue-300 hover:text-white transition-colors"
-          >
-            Registrera dig
-          </Link>
-        </div>
-      </div>
-    </footer>
-  );
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ChaufflorerPage() {
   return (
     <div className="min-h-screen flex flex-col">
-      <Nav />
+      <PublicHeader />
       <main className="flex-1">
         <Hero />
         <TrustStrip />
@@ -370,7 +351,7 @@ export default function ChaufflorerPage() {
         <Comparison />
         <FinalCTA />
       </main>
-      <Footer />
+      <LegalFooter />
     </div>
   );
 }
