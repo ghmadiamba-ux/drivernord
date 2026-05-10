@@ -68,21 +68,43 @@ function CheckIcon() {
 function Hero() {
   return (
     <section className="bg-blue-900">
-      <div className="max-w-3xl mx-auto px-5 py-20 md:py-28">
-        <p className="text-xs font-semibold uppercase tracking-widest text-blue-400 mb-5">
-          För transportföretag
-        </p>
-        <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-6">
-          Hitta kvalificerade chaufförer snabbare.
-        </h1>
-        <p className="text-blue-200 text-base md:text-lg leading-relaxed mb-8 max-w-xl">
-          DriverNord samlar in och kvalificerar chaufförsprofiler med rätt körkort, YKB och
-          tillgänglighet. Du får ett strukturerat underlag — redo för kontakt.
-        </p>
-        <PrimaryButton href="mailto:hej@drivernord.com" label="Kom igång — kontakta oss" />
-        <p className="mt-4 text-blue-400 text-sm">
-          Inget abonnemang. Vi pratar om dina behov och sätter upp ett flöde.
-        </p>
+      <div className="max-w-6xl mx-auto px-5 py-20 md:py-28">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+
+          {/* Text column */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-blue-400 mb-5">
+              För transportföretag
+            </p>
+            <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-6">
+              Hitta kvalificerade chaufförer snabbare.
+            </h1>
+            <p className="text-blue-200 text-base md:text-lg leading-relaxed mb-8 max-w-xl">
+              DriverNord samlar in och kvalificerar chaufförsprofiler med rätt körkort, YKB och
+              tillgänglighet. Du får ett strukturerat underlag — redo för kontakt.
+            </p>
+            <PrimaryButton href="mailto:hej@drivernord.com" label="Kom igång — kontakta oss" />
+            <p className="mt-4 text-blue-400 text-sm">
+              Inget abonnemang. Vi pratar om dina behov och sätter upp ett flöde.
+            </p>
+          </div>
+
+          {/* Visual column — hidden on mobile, shown on desktop */}
+          <div className="hidden lg:block">
+            <div className="relative rounded-2xl overflow-hidden bg-blue-800/50 aspect-[4/3] max-w-lg ml-auto">
+              <Image
+                src="/images/company-hero.jpg"
+                alt="Transportansvarig granskar chaufförsmatchning och ruttplanering i DriverNord"
+                fill
+                className="object-cover object-center"
+                priority
+                sizes="(max-width: 1024px) 0vw, 50vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-transparent pointer-events-none" />
+            </div>
+          </div>
+
+        </div>
       </div>
     </section>
   );

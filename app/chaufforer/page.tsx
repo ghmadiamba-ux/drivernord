@@ -96,6 +96,27 @@ function Hero() {
   );
 }
 
+// ─── Mobile hero image (below text on small screens) ─────────────────────────
+
+function MobileHeroImage() {
+  return (
+    <section className="bg-blue-900 block lg:hidden">
+      <div className="max-w-6xl mx-auto px-5 pb-10">
+        <div className="relative rounded-2xl overflow-hidden bg-blue-800/50 aspect-[4/3]">
+          <Image
+            src="/images/driver-hero.jpg"
+            alt="Yrkesförare i DriverNord-kläder vid lastbil i svensk logistikmiljö"
+            fill
+            className="object-cover object-center"
+            sizes="100vw"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 to-transparent pointer-events-none" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Trust strip ──────────────────────────────────────────────────────────────
 
 const TRUST_ITEMS = [
@@ -345,6 +366,7 @@ export default function ChaufflorerPage() {
       <PublicHeader />
       <main className="flex-1">
         <Hero />
+        <MobileHeroImage />
         <TrustStrip />
         <HowItWorks />
         <BuiltForDrivers />
