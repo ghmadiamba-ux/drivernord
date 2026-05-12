@@ -6,9 +6,36 @@
 
 ---
 
+## POST-AUDIT CORRECTIONS (added 2026-05-10, after audit was written)
+
+Several gaps listed as open in this audit were resolved in the same session. The audit body is preserved as written for historical accuracy. This correction block is the authoritative current state for the items below.
+
+| Gap listed as open in audit | Actual status |
+|-----------------------------|---------------|
+| Migrations not in version control | **RESOLVED** — `migrations/001`–`007` committed and verified against store files |
+| `GET /api/leads/[id]` returns full PII with no auth | **RESOLVED** — `requireRecruiterAuth` added to GET handler |
+| `GET/POST /api/leads/[id]/score` has no auth | **RESOLVED** — both handlers now protected by `requireRecruiterAuth` |
+| `recruiterAuth.test.ts` — 4 test failures (stale mock) | **RESOLVED** — `cookies: { get: () => undefined }` added to mock; all tests pass |
+| `metadataBase` not set in root layout | **RESOLVED** — `metadataBase: new URL('https://drivernord.com')` confirmed in `app/layout.tsx` |
+| Messaging provider abstraction missing | **RESOLVED** — `lib/messaging/` built with 46elks integration; simulated by default; real send on cockpit approval |
+| Human visuals not deployed | **RESOLVED** — `public/images/` contains `about-portrait.jpg`, `company-hero.jpg`, `company-trust.jpg`, `driver-hero.jpg` |
+
+**Remaining open gaps after corrections (as of 2026-05-10):**
+- Real SMS provider credentials not configured (`SMS_PROVIDER` unset) — simulation remains default
+- Rate limiting on `POST /api/leads` not implemented
+- No company self-service intake form
+- Legal pages remain "Preliminär version" (not legally reviewed)
+- No GDPR data deletion mechanism
+
+See `docs/current/project-state.md` and `docs/current/roadmap-next-phases.md` for current authoritative state.
+
+---
+
 ## 1. Executive Summary
 
 **Verdict: Materially improved since v2. Three of the five critical v2 gaps are now closed. The pipeline is now fully autonomous end-to-end. The most critical security gap (browser-exposed recruiter key) is resolved. Two significant gaps remain: SMS sending is still simulated, and database migrations are not in version control.**
+
+*Note: "database migrations" gap was resolved after this audit was written — see Post-Audit Corrections above.*
 
 ### What changed since v2 (2026-05-06)
 
@@ -23,15 +50,17 @@
 
 ### Remaining significant gaps
 
-| Gap | Priority | Status |
-|-----|----------|--------|
-| Migrations not in version control | HIGH | Still absent |
-| Contact/follow-up sending is simulated | HIGH | Still console.log only — no SMS provider |
-| `GET /api/leads/[id]` returns full PII with no auth | HIGH | Still unprotected |
-| `GET/POST /api/leads/[id]/score` has no auth | HIGH | Still unprotected |
-| `recruiterAuth.test.ts` — 4 test failures | MEDIUM | Test mock stale after cookie auth migration |
-| `getOpenCompanyNeeds()` missing company_name join | MEDIUM | Still missing |
-| Match cooldown guard | LOW | Not implemented |
+*Correction: several items below were resolved after this audit was written. See Post-Audit Corrections section at the top of this file for authoritative status.*
+
+| Gap | Priority | Status at audit time | Post-audit status |
+|-----|----------|----------------------|-------------------|
+| Migrations not in version control | HIGH | Still absent | **RESOLVED** |
+| Contact/follow-up sending is simulated | HIGH | Still console.log only — no SMS provider | Still open — infrastructure ready, credentials pending |
+| `GET /api/leads/[id]` returns full PII with no auth | HIGH | Still unprotected | **RESOLVED** |
+| `GET/POST /api/leads/[id]/score` has no auth | HIGH | Still unprotected | **RESOLVED** |
+| `recruiterAuth.test.ts` — 4 test failures | MEDIUM | Test mock stale after cookie auth migration | **RESOLVED** |
+| `getOpenCompanyNeeds()` missing company_name join | MEDIUM | Still missing | Still open |
+| Match cooldown guard | LOW | Not implemented | Still open |
 
 ---
 

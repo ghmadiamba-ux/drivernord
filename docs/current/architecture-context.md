@@ -162,7 +162,7 @@ Recruiter sees pending action in /recruiter cockpit (15s poll)
 
 ---
 
-## Database Schema (inferred — no migration files)
+## Database Schema (defined by migrations 001–007 and documented in docs/current/database-schema.md)
 
 ### `drivers`
 Primary lead table. Contains all drivers at any status level.

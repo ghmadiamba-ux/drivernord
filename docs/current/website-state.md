@@ -1,6 +1,6 @@
 # DriverNord — Website State
 
-*Last updated: 2026-05-10*
+*Last updated: 2026-05-10 (metadataBase gap resolved)*
 
 ---
 
@@ -175,11 +175,11 @@ All three primary legal pages are marked with a yellow "Preliminär version" ban
 
 ## Known Website Gaps
 
-| Gap | Impact | Fix |
-|-----|--------|-----|
-| `metadataBase` not in root layout | OG images use localhost URL for all pages | Set `metadataBase: new URL('https://drivernord.com')` in `app/layout.tsx` |
-| No brand/logo on /chat | Trust gap during driver registration | Add DriverNord wordmark to chat header |
-| Legal pages not reviewed | Cannot represent as final policy | Legal review → remove "Preliminär version" banners |
-| `hej@drivernord.com` inbox status unknown | Company and GDPR inquiries may be lost | Verify inbox is active and monitored |
-| /company/ai-agenter not in main nav | Hard to discover | Add link in PublicHeader or /company nav |
-| No company self-service intake form | Companies cannot register needs without recruiter mediation | Phase 2: web form for company need capture |
+| Gap | Impact | Status |
+|-----|--------|--------|
+| ~~`metadataBase` not in root layout~~ | ~~OG images use localhost URL for all pages~~ | **RESOLVED** — `metadataBase: new URL('https://drivernord.com')` confirmed in `app/layout.tsx` |
+| No brand/logo on /chat | Trust gap during driver registration | Open |
+| Legal pages not reviewed | Cannot represent as final policy | Open — legal review needed |
+| `hej@drivernord.com` inbox status unknown | Company and GDPR inquiries may be lost | Open — verify operationally |
+| /company/ai-agenter not in main nav | Hard to discover | Open |
+| No company self-service intake form | Companies cannot register needs without recruiter mediation | Open — Phase 2 |

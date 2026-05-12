@@ -1,6 +1,6 @@
 # DriverNord — Roadmap: Next Phases
 
-*Last updated: 2026-05-10 (messaging infrastructure implemented)*
+*Last updated: 2026-05-10 (Phase 1 sub-items 1.2–1.5 completed; B2B research phase active)*
 
 ---
 
@@ -24,8 +24,13 @@
 | Messaging provider abstraction | YES — `lib/messaging/` built and tested |
 | Actual contact delivery to drivers | PARTIAL — infrastructure ready, needs `SMS_PROVIDER` + credentials configured |
 | Cockpit approval → real send | YES — approval now calls provider, not just marks contacted |
+| Database migrations in version control | YES — `migrations/001`–`007` committed |
+| PII routes protected (leads, score) | YES — `requireRecruiterAuth` on all three endpoints |
+| Test suite clean | YES — 556/556 pass (recruiterAuth mock updated) |
+| OG metadata base URL | YES — `metadataBase: new URL('https://drivernord.com')` set in `app/layout.tsx` |
+| Human visuals deployed | YES — `public/images/` (about, company hero, company trust, driver hero) |
 | Company need self-service intake | NO — recruiter-only via API |
-| Real company engagement | NOT YET — email-only |
+| Real company engagement | NOT YET — email-only (`hej@drivernord.com`) |
 | Pilot with first company | BLOCKED by SMS_PROVIDER credentials only |
 
 ---
@@ -57,48 +62,81 @@ No code changes required. The cockpit approval flow already triggers real sends 
 **Effort remaining:** 30 minutes (provider account + env var configuration)
 **Effort already done:** Provider abstraction, 46elks integration, approval-sends flow, failure handling, 16 new tests
 
-### 1.2 Fix recruiterAuth test suite
+### ~~1.2 Fix recruiterAuth test suite~~ — DONE
 
-**What:** Update `tests/recruiterAuth.test.ts` — add `cookies: { get: vi.fn().mockReturnValue(undefined) }` to mock objects. 4-line fix. Unblocks clean `npm test`.
+**What:** ~~Update `tests/recruiterAuth.test.ts` — add `cookies: { get: vi.fn().mockReturnValue(undefined) }` to mock objects. 4-line fix. Unblocks clean `npm test`.~~
 
-**Effort:** 30 minutes
+**Status:** Completed. `cookies: { get: () => undefined }` added to mock. All tests pass.
 
-### 1.3 Commit database migration files
+### ~~1.3 Commit database migration files~~ — DONE
 
-**What:** Create `migrations/` directory. Write SQL DDL for all tables with constraints.
-
-Minimum files needed:
+**Status:** Completed. `migrations/` directory exists with all 7 idempotent files:
 - `001_create_drivers.sql`
-- `002_create_ingested_drivers.sql`
-- `003_create_companies_and_needs.sql`
-- `004_create_shortlists.sql`
-- `005_create_shortlist_entries.sql`
-- `006_create_system_actions.sql`
+- `002_add_domain_shift_preference_to_drivers.sql`
+- `003_create_companies_and_company_needs.sql`
+- `004_create_ingested_drivers.sql`
+- `005_create_shortlists.sql`
+- `006_add_contact_workflow_to_shortlist_entries.sql`
+- `007_create_system_actions.sql`
 
-Include: all column definitions, CHECK constraints (including the full 14-type `action_type` enum), indexes, foreign keys.
+All verified column-by-column against store files and types. See `docs/current/database-schema.md` for full schema reference.
 
-**Why now:** If the Supabase project needs to be recreated (wrong config, plan issue, etc.), there is no recovery path. This is a low-frequency but catastrophic risk.
+### ~~1.4 Set metadataBase in root layout~~ — DONE
 
-**Effort:** 2–3 hours
+**Status:** Completed. `metadataBase: new URL('https://drivernord.com')` confirmed in `app/layout.tsx:5`. OG image URLs now resolve correctly for all pages.
 
-### 1.4 Set metadataBase in root layout
+### ~~1.5 Add auth to PII-exposing endpoints~~ — DONE
 
-**What:** Add `metadataBase: new URL('https://drivernord.com')` to the metadata export in `app/layout.tsx`.
+**Status:** Completed. `requireRecruiterAuth` verified in all three handlers:
+- `GET /api/leads/[id]` — protected (`app/api/leads/[id]/route.ts:52`)
+- `GET /api/leads/[id]/score` — protected (`app/api/leads/[id]/score/route.ts:49`)
+- `POST /api/leads/[id]/score` — protected (`app/api/leads/[id]/score/route.ts:62`)
 
-**Why:** OG image URLs for all pages currently resolve to `http://localhost:3000`. When pages are shared on social media, no preview image is shown.
+---
 
-**Effort:** 5 minutes
+## Phase 1.5 — B2B Research and Barrier-to-Entry Assessment (ACTIVE)
 
-### 1.5 Add auth to PII-exposing endpoints
+**Goal:** Identify realistic Swedish transport/logistics pilot targets and understand barriers to entry before building any company intake form. This phase is research-only — no code.
 
-**What:** 
-- `GET /api/leads/[id]` — add `requireRecruiterAuth` (makes it a recruiter-only endpoint)
-- `GET /api/leads/[id]/score` — same
-- `POST /api/leads/[id]/score` — same
+**Why before Phase 2:** Building a company intake form before understanding how target companies actually engage with vendors risks building the wrong entry point (wrong form fields, wrong trust signals, wrong contact flow).
 
-Alternative: leave unprotected but add UUID-as-token ownership check (more complex).
+**Core research principle:** Do not only look for companies with driver needs. Look for companies with:
+- visible driver need
+- **+** low barrier to entry
+- **+** accessible decision-maker
+- **+** realistic pilot feasibility
 
-**Effort:** 30 minutes for simple recruiter auth approach
+### Target segments (priority order)
+
+1. **Swedish transport SMEs and regional operators** — companies with 5–50 trucks, recurring C/CE hiring needs, owner or transport manager as decision-maker. No procurement panel. Stockholm region first.
+2. **Transport-specialist staffing agencies** — Rekryteringsgruppen, Simplex Bemanning, Submit AB — as potential supplier clients. DriverNord supplies pre-qualified driver profiles; agency places them. Bypasses employer-direct complexity.
+3. **Regional logistics operators** with visible driver ads on Arbetsförmedlingen or Blocket Jobb.
+
+### Large accounts — benchmarks only, not immediate targets
+
+PostNord, DHL, Bring, DB Schenker and similar groups have multi-month supplier approval processes, procurement systems, HR vendor panels, GDPR/insurance requirements. Research their processes as benchmarks and long-term strategic accounts. Do not approach as pilot candidates.
+
+### Barrier dimensions to assess per company
+
+| Dimension | What to check |
+|-----------|---------------|
+| Procurement / supplier approval | Is there a formal vendor approval process? How long? |
+| Existing staffing contracts | Do they have an exclusivity clause with a bemanning company? |
+| GDPR / data processor agreement | Do they require a DPA before sharing driver data? |
+| Insurance / liability | Does the non-employer model require explicit clarification? |
+| Decision-maker accessibility | Owner / transport manager vs. HR vs. procurement department |
+| Current driver urgency | Are they actively advertising for C/CE drivers right now? |
+
+### Output of this phase
+
+A ranked shortlist of 5–10 pilot candidates with:
+- company name, segment, size
+- current hiring signal (where seen)
+- estimated barrier-to-entry level (low / medium / high)
+- identified or inferred decision-maker role
+- recommended first contact approach
+
+This shortlist informs Phase 2 form design and B2B outreach strategy.
 
 ---
 
@@ -258,13 +296,15 @@ Minimum: `DELETE /api/recruiter/drivers/[id]` that deletes from `drivers` and `i
 
 ## Phase Summary
 
-| Phase | Goal | Blocks | Effort |
+| Phase | Goal | Blocks | Status |
 |-------|------|--------|--------|
-| 1 — Pilot Readiness | Real contact delivery | First real pilot | 3–5 days total |
-| 2 — Company Need Capture | Self-service company intake | Removing recruiter bottleneck | 3–4 days |
-| 3 — Observability | Safe operation + rate limiting | Public campaigns | 3–4 days |
-| 4 — Legal Completeness | Final legal pages | Public-facing at scale | External + 1 day |
-| 5 — Scale Preparation | Volume capacity | Beyond pilot | 5–7 days |
+| 1.1 — SMS credentials | Real contact delivery | First real pilot | OPEN — infrastructure done, credentials pending |
+| 1.2–1.5 — Pilot readiness tasks | Tests, migrations, auth, metadataBase | First real pilot | **DONE** |
+| 1.5 — B2B Research | Pilot target selection + barrier mapping | Phase 2 form design | **ACTIVE** |
+| 2 — Company Need Capture | Self-service company intake | Removing recruiter bottleneck | Not started — 3–4 days |
+| 3 — Observability | Safe operation + rate limiting | Public campaigns | Not started — 3–4 days |
+| 4 — Legal Completeness | Final legal pages | Public-facing at scale | Not started — external + 1 day |
+| 5 — Scale Preparation | Volume capacity | Beyond pilot | Not started — 5–7 days |
 
 ---
 

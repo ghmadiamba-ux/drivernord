@@ -56,6 +56,31 @@ interface CockpitData {
   today: TodayMetrics;
 }
 
+interface B2BTargetRow {
+  id:                        string;
+  company_name:              string;
+  segment:                   string | null;
+  pilot_accessibility_score: number | null;
+  barrier_level:             string | null;
+  research_status:           string;
+  region:                    string | null;
+  contact_email:             string | null;
+  linkedin_url:              string | null;
+}
+
+interface B2BSummary {
+  total:         number;
+  enriched:      number;
+  scoredAbove70: number;
+  withContact:   number;
+  byStatus:      Record<string, number>;
+}
+
+interface B2BData {
+  targets: B2BTargetRow[];
+  summary: B2BSummary;
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const ACTION_ICONS: Record<string, string> = {
@@ -150,6 +175,14 @@ export default function RecruiterPage() {
   const [fetchError, setFetchError]   = useState<string | null>(null);
   const [actioning, setActioning]     = useState<Record<string, boolean>>({});
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [b2bData, setB2bData]         = useState<B2BData | null>(null);
+
+  const fetchB2BData = useCallback(async () => {
+    try {
+      const res = await fetch('/api/recruiter/b2b/targets');
+      if (res.ok) setB2bData(await res.json() as B2BData);
+    } catch { /* non-critical — cockpit still works without B2B data */ }
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -171,9 +204,10 @@ export default function RecruiterPage() {
 
   useEffect(() => {
     fetchData();
+    fetchB2BData();
     const id = setInterval(fetchData, 15_000);
     return () => clearInterval(id);
-  }, [fetchData]);
+  }, [fetchData, fetchB2BData]);
 
   async function handleAction(actionId: string, action: 'approve' | 'cancel') {
     setActioning((p) => ({ ...p, [actionId]: true }));
@@ -360,6 +394,57 @@ export default function RecruiterPage() {
             </Section>
           </>
         )}
+
+        {/* ── B2B Research Registry ──────────────────────────────────────────── */}
+        <Section label="B2B Research Registry">
+          <p className="text-xs text-slate-600 mb-3 font-mono">
+            Read-only — research targets only. No outreach, no agents, no company_needs.
+          </p>
+          {!b2bData ? (
+            <p className="text-sm text-slate-600">No B2B targets imported yet.</p>
+          ) : (
+            <>
+              {/* Summary row */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                <StatBadge label="Total"      value={b2bData.summary.total}         />
+                <StatBadge label="Enriched"   value={b2bData.summary.enriched}      />
+                <StatBadge label="Score ≥70"  value={b2bData.summary.scoredAbove70} variant={b2bData.summary.scoredAbove70 > 0 ? 'amber' : 'default'} />
+                <StatBadge label="w/ Contact" value={b2bData.summary.withContact}   />
+              </div>
+
+              {/* Target table */}
+              {b2bData.targets.length === 0 ? (
+                <p className="text-sm text-slate-600">No B2B targets imported yet.</p>
+              ) : (
+                <div className="rounded-lg bg-slate-900 border border-slate-800 overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800">
+                        <th className="px-3 py-2 text-left text-slate-500 font-semibold uppercase tracking-wider">Company</th>
+                        <th className="px-3 py-2 text-left text-slate-500 font-semibold uppercase tracking-wider">Seg</th>
+                        <th className="px-3 py-2 text-right text-slate-500 font-semibold uppercase tracking-wider">Score</th>
+                        <th className="px-3 py-2 text-left text-slate-500 font-semibold uppercase tracking-wider">Barrier</th>
+                        <th className="px-3 py-2 text-left text-slate-500 font-semibold uppercase tracking-wider">Status</th>
+                        <th className="px-3 py-2 text-left text-slate-500 font-semibold uppercase tracking-wider">Region</th>
+                        <th className="px-3 py-2 text-left text-slate-500 font-semibold uppercase tracking-wider">Contact</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {b2bData.targets.slice(0, 10).map((t) => (
+                        <B2BTargetTableRow key={t.id} target={t} />
+                      ))}
+                    </tbody>
+                  </table>
+                  {b2bData.targets.length > 10 && (
+                    <p className="px-3 py-2 text-xs text-slate-600 border-t border-slate-800">
+                      Showing 10 of {b2bData.targets.length} targets.
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </Section>
       </main>
     </div>
   );
@@ -700,4 +785,46 @@ function PipelineStep({
 
 function PipelineArrow() {
   return <span className="text-slate-700 text-base select-none px-1">→</span>;
+}
+
+function B2BTargetTableRow({ target }: { target: B2BTargetRow }) {
+  const barrierColor =
+    target.barrier_level === 'low'    ? 'text-emerald-400' :
+    target.barrier_level === 'medium' ? 'text-amber-400'   :
+    target.barrier_level === 'high'   ? 'text-red-400'     :
+                                        'text-slate-500';
+
+  const statusColor =
+    target.research_status === 'enriched'   ? 'text-emerald-400' :
+    target.research_status === 'incomplete' ? 'text-amber-400'   :
+    target.research_status === 'rejected'   ? 'text-slate-600'   :
+                                              'text-slate-400';
+
+  const hasContact = target.contact_email || target.linkedin_url;
+
+  return (
+    <tr className="hover:bg-slate-800/40 transition-colors">
+      <td className="px-3 py-2 font-medium text-slate-100 max-w-[200px] truncate">
+        {target.company_name}
+      </td>
+      <td className="px-3 py-2 font-mono text-slate-400">{target.segment ?? '—'}</td>
+      <td className="px-3 py-2 text-right font-bold tabular-nums text-blue-400">
+        {target.pilot_accessibility_score ?? '—'}
+      </td>
+      <td className={`px-3 py-2 font-mono ${barrierColor}`}>
+        {target.barrier_level ?? '—'}
+      </td>
+      <td className={`px-3 py-2 font-mono ${statusColor}`}>
+        {target.research_status.replace('_', ' ')}
+      </td>
+      <td className="px-3 py-2 text-slate-500">{target.region ?? '—'}</td>
+      <td className="px-3 py-2">
+        {hasContact ? (
+          <span className="text-emerald-400 font-mono">✓</span>
+        ) : (
+          <span className="text-slate-700 font-mono">—</span>
+        )}
+      </td>
+    </tr>
+  );
 }
