@@ -4,6 +4,11 @@ node_modules/
 # Build output
 .next/
 out/
+tsconfig.tsbuildinfo
+
+# Local env backups — contain production credentials
+.env.local.prod-backup
+.env.local.production.bak
 
 # Environment variables — never commit
 .env

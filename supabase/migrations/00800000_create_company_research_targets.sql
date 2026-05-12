@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS company_research_targets (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
 
   -- ── Identity ─────────────────────────────────────────────────────────
-  company_name  TEXT NOT NULL,
+  company_name  TEXT NOT NULL UNIQUE,
   website       TEXT,
 
   -- ── Geography ────────────────────────────────────────────────────────
