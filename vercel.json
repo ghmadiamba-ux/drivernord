@@ -3,6 +3,14 @@
     {
       "path": "/api/agent/follow-up",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/agent/market-scan-daily",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/agent/market-scan-weekly",
+      "schedule": "0 4 * * 1"
     }
   ]
 }
