@@ -46,7 +46,12 @@ export function validateSignal(signal: NormalizedMarketSignal): string | null {
 // ─── Region mapping ───────────────────────────────────────────────────────────
 // Maps raw municipality/region strings from external sources to DriverNord regions.
 
-export function normalizeRegion(raw: string | null): Region | null {
+// Returns a DB-valid region string.
+// Note: 'stockholm_region' and 'malardalen' are valid in the company_research_targets
+// DB schema but are not in the lead.ts Region type (which covers driver intake only).
+// We return them as strings here since they are inserted directly into the
+// company_research_targets.region column, not into drivers.region.
+export function normalizeRegion(raw: string | null): Region | string | null {
   if (!raw) return null;
   const s = raw.toLowerCase();
   if (s.includes('stockholm') && !s.includes('region')) return 'stockholm';
@@ -83,7 +88,6 @@ export function extractLicense(text: string | null): CompanyLicense | null {
   if (t.includes('CE'))                          return 'CE';
   if (t.includes(' C ') || t.includes('C-BEH') || t.includes('LASTBIL')) return 'C';
   if (t.includes(' D ') || t.includes('D-BEH') || t.includes('BUSS'))    return 'D';
-  if (t.includes(' B ') || t.includes('B-BEH'))                           return 'B';
   return null;
 }
 
@@ -93,7 +97,7 @@ export function extractDomain(text: string | null): Domain | null {
   if (!text) return null;
   const t = text.toLowerCase();
   if (t.includes('kyl') || t.includes('frys') || t.includes('temperatur') || t.includes('kylbil')) return 'kylfrys';
-  if (t.includes('tank') || t.includes('adr') || t.includes('farligt gods'))                        return 'tank';
+  if (t.includes('tank') || t.includes('adr') || t.includes('farligt gods'))                        return 'tanker';
   if (t.includes('schakt') || t.includes('bygg') || t.includes('anlägg') || t.includes('maskin'))   return 'schakt_bygg';
   if (t.includes('fjärr') || t.includes('lång') || t.includes('natt') || t.includes('expressgods')) return 'fjarrtransport';
   if (t.includes('distribution') || t.includes('bud') || t.includes('last ') || t.includes('paket')) return 'distribution';
@@ -137,7 +141,7 @@ async function upsertResearchTarget(signal: NormalizedMarketSignal): Promise<str
 
   // Create new research target from signal
   const targetId = randomUUID();
-  const region   = (normalizeRegion(signal.region_required) ?? 'stockholm_region') as Region;
+  const region   = normalizeRegion(signal.region_required) ?? 'stockholm_region';
 
   await db.from('company_research_targets').insert({
     id:           targetId,
@@ -219,7 +223,7 @@ async function upsertCompanyNeedDraft(
   if (!signal.region_required)  missingFields.push('region_required');
 
   const draftStatus = missingFields.length > 0 ? 'incomplete' : 'ready_for_review';
-  const region      = normalizeRegion(signal.region_required) as Region | null;
+  const region      = normalizeRegion(signal.region_required) as string | null;
 
   await db.from('company_need_drafts').insert({
     id:                   randomUUID(),

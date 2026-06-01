@@ -53,7 +53,7 @@ function normalizeHit(hit: JobtechHit, query: string, fetchedAt: string): Normal
 
   const rawText   = `${hit.headline ?? ''} ${hit.description?.text ?? ''}`;
   const regionRaw = hit.workplace_address?.municipality ?? hit.workplace_address?.region ?? null;
-  const region    = normalizeRegion(regionRaw);
+  const region = normalizeRegion(regionRaw) as string | null;
 
   // Only include Stockholm and surrounding areas for V1
   if (region !== 'stockholm' && region !== 'stockholm_region') return null;

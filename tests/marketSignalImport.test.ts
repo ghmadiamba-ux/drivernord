@@ -126,7 +126,7 @@ describe('extractDomain', () => {
   it('schakt_bygg from schakt', () => expect(extractDomain('Schaktförare CE-behörighet')).toBe('schakt_bygg'));
   it('fjarrtransport from fjärr', () => expect(extractDomain('Fjärrtransportchaufför CE')).toBe('fjarrtransport'));
   it('distribution from distributionschaufför', () => expect(extractDomain('Distributionschaufför sökes')).toBe('distribution'));
-  it('tank from ADR', () => expect(extractDomain('ADR tankbilschaufför')).toBe('tank'));
+  it('tanker from ADR', () => expect(extractDomain('ADR tankbilschaufför')).toBe('tanker'));
   it('returns null for unrecognized domain', () => expect(extractDomain('Kontorsjobb')).toBeNull());
 });
 
