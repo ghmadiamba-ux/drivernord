@@ -60,10 +60,8 @@ function normalizeHit(hit: JobtechHit, query: string, fetchedAt: string): Normal
 
   const rawText   = `${hit.headline ?? ''} ${hit.description?.text ?? ''}`;
   const regionRaw = hit.workplace_address?.municipality ?? hit.workplace_address?.region ?? null;
+  // Accept all Swedish locations — let scoring and supply-aware evaluation handle prioritization
   const region = normalizeRegion(regionRaw) as string | null;
-
-  // Only include Stockholm and surrounding areas for V1
-  if (region !== 'stockholm' && region !== 'stockholm_region') return null;
 
   const license = extractLicense(rawText) ?? extractLicense(hit.headline);
   const domain  = extractDomain(rawText) ?? extractDomain(hit.headline);
