@@ -664,11 +664,13 @@ export async function runLiveScanCycle(): Promise<MarketScanResult> {
   let rawFound       = 0;
   const sourceTypes: import('./marketSignalTypes').MarketSignalSourceType[] = [];
 
+  const connectorErrors: string[] = [];
   for (const connector of connectors) {
     const result = await connector.fetchSignals();
     allSignals    = allSignals.concat(result.signals);
     sourcesChecked += result.sources_checked;
     rawFound       += result.raw_found;
+    connectorErrors.push(...result.errors);
     sourceTypes.push(connector.source_type as import('./marketSignalTypes').MarketSignalSourceType);
   }
 
@@ -705,6 +707,7 @@ export async function runLiveScanCycle(): Promise<MarketScanResult> {
       supply_gap_blocked:     supplyGapBlocked,
       supply_ready_promotable: supplyReadyPromotable,
       expired_detected:       expiredDetected,
+      connector_errors:       connectorErrors.length > 0 ? connectorErrors : undefined,
     },
   });
 

@@ -108,12 +108,19 @@ export class PlatsbankenConnector implements MarketScanConnector {
     let   checked    = 0;
 
     for (const query of SEARCH_QUERIES) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 12_000);
       try {
         const url = `${JOBTECH_SEARCH_URL}?q=${encodeURIComponent(query)}&limit=${MAX_PER_QUERY}`;
         const res = await fetch(url, {
-          headers: { 'Accept': 'application/json', 'User-Agent': 'DriverNord-MarketAgent/1.0' },
-          signal:  AbortSignal.timeout(10_000),
+          headers: {
+            'Accept':          'application/json',
+            'User-Agent':      'DriverNord-MarketAgent/1.0',
+            'Accept-Language': 'sv-SE,sv;q=0.9',
+          },
+          signal: controller.signal,
         });
+        clearTimeout(timer);
         checked++;
 
         if (!res.ok) {
@@ -130,6 +137,7 @@ export class PlatsbankenConnector implements MarketScanConnector {
           if (signal) allSignals.push(signal);
         }
       } catch (err) {
+        clearTimeout(timer);
         errors.push(`platsbanken query "${query}": ${String(err)}`);
       }
     }
