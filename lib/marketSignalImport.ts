@@ -143,7 +143,7 @@ async function upsertResearchTarget(signal: NormalizedMarketSignal): Promise<str
   const targetId = randomUUID();
   const region   = normalizeRegion(signal.region_required) ?? 'stockholm_region';
 
-  await db.from('company_research_targets').insert({
+  const { error: insertErr } = await db.from('company_research_targets').insert({
     id:           targetId,
     created_at:   now,
     updated_at:   now,
@@ -172,6 +172,7 @@ async function upsertResearchTarget(signal: NormalizedMarketSignal): Promise<str
     scored_by:              `agent:market_scan_v1:${signal.source_type}`,
   });
 
+  if (insertErr) throw new Error(`company_research_targets insert failed: ${insertErr.message}`);
   return targetId;
 }
 
@@ -225,7 +226,7 @@ async function upsertCompanyNeedDraft(
   const draftStatus = missingFields.length > 0 ? 'incomplete' : 'ready_for_review';
   const region      = normalizeRegion(signal.region_required) as string | null;
 
-  await db.from('company_need_drafts').insert({
+  const { error: draftErr } = await db.from('company_need_drafts').insert({
     id:                   randomUUID(),
     created_at:           now,
     updated_at:           now,
@@ -244,7 +245,6 @@ async function upsertCompanyNeedDraft(
       role_title:             signal.role_title,
       description_snippet:    signal.description_snippet,
       urgency_signal:         signal.urgency_signal,
-      // Analyst-score proxies from connector confidence
       recruitment_pain_score: signal.urgency_signal === 'repeated_ads' ? 75
         : signal.urgency_signal === 'stated_urgency' ? 90 : 50,
       drivernord_fit_score:   Math.round(signal.confidence_score / 10),
@@ -274,6 +274,7 @@ async function upsertCompanyNeedDraft(
     converted_need_id:    null,
   });
 
+  if (draftErr) throw new Error(`company_need_drafts insert failed: ${draftErr.message}`);
   return 'created';
 }
 
