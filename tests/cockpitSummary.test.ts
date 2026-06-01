@@ -107,14 +107,15 @@ function setupDbMocks({
       return chainSelectEq({ data: needRows, error: null }) as never;
     }
 
-    // ── system_actions (5 calls in Phase 1 Promise.all) ───────────────────
+    // ── system_actions (6 calls in Phase 1 Promise.all) ───────────────────
     if (table === 'system_actions') {
       saCount++;
       if (saCount === 1) return chainSelectEq     ({ data: dqActions, error: null })          as never; // DQ
       if (saCount === 2) return chainSelectEq     ({ data: dupActions, error: null })          as never; // dup
       if (saCount === 3) return chainSelectEqEq   ({ count: pendingCount, error: null })       as never; // pending
       if (saCount === 4) return chainLastScan     ({ data: lastScanRows, error: null })        as never; // daily scan
-      return               chainLastScan          ({ data: lastWeeklyScanRows, error: null })  as never; // weekly scan
+      if (saCount === 5) return chainLastScan     ({ data: lastWeeklyScanRows, error: null })  as never; // weekly scan
+      return               chainLastScan          ({ data: [], error: null })                  as never; // last scan result
     }
 
     // ── company_need_drafts ────────────────────────────────────────────────

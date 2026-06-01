@@ -25,6 +25,9 @@ export interface GovernanceSignals {
   migration_016_applied:     boolean;
   migration_017_applied:          boolean;
   queue_batch1_followup_due:     boolean;
+  market_agent_run_type:         'evaluation_run' | 'live_scan' | 'unknown';
+  supply_gap_blocked:            number; // drafts blocked by supply gap at last evaluation
+  supply_ready_promotable:       number; // drafts ready for promotion with confirmed supply
 }
 
 export interface ActiveNeedOverview {
@@ -91,6 +94,7 @@ export async function buildCockpitSummary(): Promise<CockpitSummaryPayload> {
     lastWeeklyScanRes,
     pilotRes,
     outreachQueueRes,
+    lastScanResultRes,
   ] = await Promise.all([
     db.from('company_needs')
       .select('id, company_id, need_type, license_required, domain_required, location_region, urgency, companies(name)')
@@ -125,6 +129,12 @@ export async function buildCockpitSummary(): Promise<CockpitSummaryPayload> {
       .select('relationship_status, next_action_date, do_not_contact_reason'),
     db.from('outreach_email_queue')
       .select('status, risk_notes, scheduled_send_at, reply_detected_at'),
+    db.from('system_actions')
+      .select('result')
+      .eq('action_type', 'company_need_daily_scan_completed')
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(1),
   ]);
 
   const needRows         = (needsRes.data         ?? []) as Record<string, unknown>[];
@@ -150,6 +160,16 @@ export async function buildCockpitSummary(): Promise<CockpitSummaryPayload> {
     r.scheduled_send_at !== null &&
     (r.scheduled_send_at as string) <= threeDaysFromNow,
   );
+
+  // Extract supply observability from last scan result (populated by market agent v2+)
+  const lastScanResultRow = ((lastScanResultRes.data ?? []) as Record<string, unknown>[])[0];
+  const lastScanResult    = (lastScanResultRow?.result ?? {}) as Record<string, unknown>;
+  const marketAgentRunType: 'evaluation_run' | 'live_scan' | 'unknown' =
+    lastScanResult.run_type === 'evaluation_run' ? 'evaluation_run'
+    : lastScanResult.run_type === 'live_scan'    ? 'live_scan'
+    :                                              'unknown';
+  const supplyGapBlocked      = Number(lastScanResult.supply_gap_blocked      ?? 0);
+  const supplyReadyPromotable = Number(lastScanResult.supply_ready_promotable ?? 0);
 
   // ─ Derived blocker sets ────────────────────────────────────────────────────
   const dqDriverIds = new Set(
@@ -339,6 +359,9 @@ export async function buildCockpitSummary(): Promise<CockpitSummaryPayload> {
     migration_016_applied:     migration016Applied,
     migration_017_applied:          migration017Applied,
     queue_batch1_followup_due:     queueBatch1FollowupDue,
+    market_agent_run_type:         marketAgentRunType,
+    supply_gap_blocked:            supplyGapBlocked,
+    supply_ready_promotable:       supplyReadyPromotable,
   };
 
   return {
