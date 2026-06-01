@@ -1,20 +1,27 @@
 // lib/marketScanConnectors/platsbanken.ts
 //
 // Live connector for Platsbanken / Arbetsförmedlingen via the Jobtech Dev
-// public API (https://jobs.api.jobtechdev.se). No credentials required.
+// public API. No credentials required.
+//
+// Primary URL:   https://jobsearch.api.jobtechdev.se/search
+// Fallback URL:  https://jobs.api.jobtechdev.se/search
+//
+// Uses Node.js https module (not global fetch) for reliable DNS resolution
+// in Vercel/AWS serverless environments.
 //
 // Enabled by environment variable: PLATSBANKEN_SCAN_ENABLED=true
-// If not set (or set to anything other than 'true'), fetchSignals() returns
-// an empty result without error — connector is silently disabled.
-//
-// Search terms cover all CE/C/D driver roles relevant to DriverNord.
 
+import * as https from 'https';
 import type { NormalizedMarketSignal } from '../marketSignalTypes';
 import type { MarketScanConnector, ConnectorFetchResult } from './types';
-import { extractLicense, extractDomain, normalizeRegion, generateStableSignalId } from '../marketSignalImport';
+import { extractLicense, extractDomain, normalizeRegion } from '../marketSignalImport';
 
 // Jobtech Dev public search API — no credentials
-const JOBTECH_SEARCH_URL = 'https://jobs.api.jobtechdev.se/search';
+// Primary URL is the newer jobsearch subdomain; falls back to legacy jobs subdomain
+const JOBTECH_SEARCH_URLS = [
+  'https://jobsearch.api.jobtechdev.se/search',
+  'https://jobs.api.jobtechdev.se/search',
+];
 
 // Swedish terms for CE/C/D driver roles — covers DriverNord's primary domains
 const SEARCH_QUERIES = [
@@ -66,7 +73,7 @@ function normalizeHit(hit: JobtechHit, query: string, fetchedAt: string): Normal
   return {
     stable_signal_id:    stableId,
     source_type:         'platsbanken',
-    source_url:          `${JOBTECH_SEARCH_URL}?q=${encodeURIComponent(query)}`,
+    source_url:          `${JOBTECH_SEARCH_URLS[0]}?q=${encodeURIComponent(query)}`,
     job_url:             hit.webpage_url ?? hit.application_details?.url ?? null,
     scan_date:           fetchedAt,
     signal_date:         hit.publication_date ?? null,
@@ -96,6 +103,43 @@ export class PlatsbankenConnector implements MarketScanConnector {
     return process.env.PLATSBANKEN_SCAN_ENABLED === 'true';
   }
 
+  private async httpsGet(url: string): Promise<{ ok: boolean; status: number; body: string }> {
+    return new Promise((resolve) => {
+      const parsed = new URL(url);
+      const options = {
+        hostname: parsed.hostname,
+        path:     parsed.pathname + parsed.search,
+        method:   'GET',
+        headers:  {
+          'Accept':          'application/json',
+          'User-Agent':      'DriverNord-MarketAgent/1.0 (+https://drivernord.com)',
+          'Accept-Language': 'sv-SE,sv;q=0.9,en;q=0.8',
+        },
+        timeout: 15000,
+      };
+      const req = https.request(options, (res) => {
+        let body = '';
+        res.on('data', (d) => { body += d; });
+        res.on('end', () => resolve({ ok: res.statusCode! >= 200 && res.statusCode! < 300, status: res.statusCode!, body }));
+      });
+      req.on('timeout', () => { req.destroy(new Error('request timeout')); });
+      req.on('error', (err) => resolve({ ok: false, status: 0, body: err.message }));
+      req.end();
+    });
+  }
+
+  private async fetchFromUrl(baseUrl: string, query: string): Promise<{ hits: JobtechHit[]; error?: string }> {
+    const url = `${baseUrl}?q=${encodeURIComponent(query)}&limit=${MAX_PER_QUERY}`;
+    try {
+      const res = await this.httpsGet(url);
+      if (!res.ok) return { hits: [], error: `HTTP ${res.status}: ${res.body.slice(0, 100)}` };
+      const body = JSON.parse(res.body) as JobtechResponse;
+      return { hits: body.hits ?? [] };
+    } catch (err) {
+      return { hits: [], error: String(err) };
+    }
+  }
+
   async fetchSignals(): Promise<ConnectorFetchResult> {
     if (!this.enabled) {
       return { signals: [], sources_checked: 0, raw_found: 0, errors: [] };
@@ -107,38 +151,50 @@ export class PlatsbankenConnector implements MarketScanConnector {
     let   rawFound   = 0;
     let   checked    = 0;
 
-    for (const query of SEARCH_QUERIES) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 12_000);
-      try {
-        const url = `${JOBTECH_SEARCH_URL}?q=${encodeURIComponent(query)}&limit=${MAX_PER_QUERY}`;
-        const res = await fetch(url, {
-          headers: {
-            'Accept':          'application/json',
-            'User-Agent':      'DriverNord-MarketAgent/1.0',
-            'Accept-Language': 'sv-SE,sv;q=0.9',
-          },
-          signal: controller.signal,
-        });
-        clearTimeout(timer);
+    // Determine which base URL to use by probing the first query
+    let baseUrl = JOBTECH_SEARCH_URLS[0];
+    const probe = await this.fetchFromUrl(JOBTECH_SEARCH_URLS[0], 'CE chaufför');
+    if (probe.error && JOBTECH_SEARCH_URLS.length > 1) {
+      // Primary URL failed — try fallback
+      const fallbackProbe = await this.fetchFromUrl(JOBTECH_SEARCH_URLS[1], 'CE chaufför');
+      if (!fallbackProbe.error) {
+        baseUrl = JOBTECH_SEARCH_URLS[1];
+        // Count the probe as checked and process its results
         checked++;
-
-        if (!res.ok) {
-          errors.push(`platsbanken query "${query}": HTTP ${res.status}`);
-          continue;
-        }
-
-        const body = await res.json() as JobtechResponse;
-        const hits  = body.hits ?? [];
-        rawFound   += hits.length;
-
-        for (const hit of hits) {
-          const signal = normalizeHit(hit, query, fetchedAt);
+        rawFound += fallbackProbe.hits.length;
+        for (const hit of fallbackProbe.hits) {
+          const signal = normalizeHit(hit, 'CE chaufför', fetchedAt);
           if (signal) allSignals.push(signal);
         }
-      } catch (err) {
-        clearTimeout(timer);
-        errors.push(`platsbanken query "${query}": ${String(err)}`);
+      } else {
+        errors.push(`primary (${JOBTECH_SEARCH_URLS[0]}): ${probe.error}`);
+        errors.push(`fallback (${JOBTECH_SEARCH_URLS[1]}): ${fallbackProbe.error}`);
+        return { signals: [], sources_checked: 0, raw_found: 0, errors };
+      }
+    } else if (!probe.error) {
+      checked++;
+      rawFound += probe.hits.length;
+      for (const hit of probe.hits) {
+        const signal = normalizeHit(hit, 'CE chaufför', fetchedAt);
+        if (signal) allSignals.push(signal);
+      }
+    } else {
+      errors.push(`platsbanken probe failed: ${probe.error}`);
+      return { signals: [], sources_checked: 0, raw_found: 0, errors };
+    }
+
+    // Run remaining queries against the confirmed working URL
+    for (const query of SEARCH_QUERIES.slice(1)) {
+      const result = await this.fetchFromUrl(baseUrl, query);
+      checked++;
+      if (result.error) {
+        errors.push(`platsbanken query "${query}": ${result.error}`);
+        continue;
+      }
+      rawFound += result.hits.length;
+      for (const hit of result.hits) {
+        const signal = normalizeHit(hit, query, fetchedAt);
+        if (signal) allSignals.push(signal);
       }
     }
 
