@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { runWeeklyCompanyNeedDeepScan } from '../../../../lib/companyNeedMarketAgent';
+import { type NextRequest, NextResponse } from 'next/server';
+import { runWeeklyCompanyNeedDeepScan, runLiveScanCycle } from '../../../../lib/companyNeedMarketAgent';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,16 +35,32 @@ async function handleScan(req: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const result = await runWeeklyCompanyNeedDeepScan();
+    // Weekly scan runs live_scan if Platsbanken connector is enabled,
+    // otherwise falls back to the standard evaluation run.
+    const liveScanEnabled = process.env.PLATSBANKEN_SCAN_ENABLED === 'true';
+    const result = liveScanEnabled
+      ? await runLiveScanCycle()
+      : await runWeeklyCompanyNeedDeepScan();
+
     return NextResponse.json({
-      ok:                    true,
-      scan_type:             result.scan_type,
-      scanned_at:            result.scanned_at,
-      drafts_evaluated:      result.drafts_evaluated,
-      stale_detected:        result.stale_detected,
-      promotion_recommended: result.promotion_recommended,
-      expired_detected:      result.expired_detected,
-      scan_action_id:        result.scan_action_id,
+      ok:                      true,
+      run_type:                result.run_type,
+      is_evaluation_only:      result.is_evaluation_only,
+      live_scan_available:     result.live_scan_available ?? false,
+      live_scan_attempted:     result.live_scan_attempted ?? liveScanEnabled,
+      live_sources_checked:    result.live_sources_checked ?? 0,
+      import_run_available:    result.import_run_available,
+      scan_type:               result.scan_type,
+      scanned_at:              result.scanned_at,
+      signals_imported:        result.signals_imported ?? 0,
+      signals_updated:         result.signals_updated  ?? 0,
+      drafts_evaluated:        result.drafts_evaluated,
+      stale_detected:          result.stale_detected,
+      promotion_recommended:   result.promotion_recommended,
+      supply_gap_blocked:      result.supply_gap_blocked,
+      supply_ready_promotable: result.supply_ready_promotable,
+      expired_detected:        result.expired_detected,
+      scan_action_id:          result.scan_action_id,
     });
   } catch (err) {
     console.error('[agent/market-scan-weekly] failed:', err);

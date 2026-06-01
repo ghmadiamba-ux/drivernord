@@ -314,6 +314,14 @@ export interface MarketScanResult {
   expired_detected:      number;
   signals:               MarketSignal[];
   scan_action_id:        string;
+
+  // ── Import / live scan fields (populated only on import_run / live_scan) ──
+  signals_imported?:     number;
+  signals_updated?:      number;
+  live_scan_attempted?:  boolean;
+  live_sources_checked?: number;
+  live_scan_available?:  boolean;
+  import_run_available:  boolean;
 }
 
 // ─── Draft evaluation ─────────────────────────────────────────────────────────
@@ -540,6 +548,8 @@ async function runScan(
     expired_detected:      expiredDetected,
     signals,
     scan_action_id:        scanActionId,
+    import_run_available:  true,
+    live_scan_available:   process.env.PLATSBANKEN_SCAN_ENABLED === 'true',
   };
 }
 
@@ -568,6 +578,156 @@ export async function runTriggeredCompanyNeedScan(
   trigger: Record<string, unknown>,
 ): Promise<MarketScanResult> {
   return runScan('triggered', trigger);
+}
+
+// Import fresh market signals, then run supply-aware evaluation.
+// Accepts any array of NormalizedMarketSignal (from CSV, live API, manual entry).
+// Returns a full MarketScanResult including import counts + evaluation results.
+export async function runMarketImportScan(
+  signals: import('./marketSignalTypes').NormalizedMarketSignal[],
+  sourceTypes: import('./marketSignalTypes').MarketSignalSourceType[],
+): Promise<MarketScanResult> {
+  const { importMarketSignals } = await import('./marketSignalImport');
+
+  const importSummary = await importMarketSignals(signals, {
+    run_type:     'import_run',
+    source_types: sourceTypes,
+  });
+
+  // Evaluate all drafts after import (supply-aware)
+  const scannedAt                = importSummary.completed_at;
+  const { signals: evalSignals } = await evaluateDrafts();
+  const staleDetected            = evalSignals.filter((s) => s.is_stale).length;
+  const promotionRecommended     = evalSignals.filter((s) => s.promotion_recommended).length;
+  const expiredDetected          = evalSignals.filter((s) => s.lifecycle === 'expired').length;
+  const supplyGapBlocked         = evalSignals.filter((s) => s.lifecycle === 'hold_supply_gap').length;
+  const supplyReadyPromotable    = evalSignals.filter((s) => s.lifecycle === 'ready_for_internal_promotion').length;
+
+  const scanActionId = await logAction({
+    action_type:  'company_need_daily_scan_completed',
+    triggered_by: 'agent:market_agent_v1:import_run',
+    target_type:  'market_scan',
+    target_id:    randomUUID(),
+    status:       'completed',
+    result: {
+      run_type:               'import_run',
+      is_evaluation_only:     false,
+      signals_imported:       importSummary.signals_imported,
+      signals_updated:        importSummary.signals_updated,
+      drafts_evaluated:       evalSignals.length,
+      stale_detected:         staleDetected,
+      promotion_recommended:  promotionRecommended,
+      supply_gap_blocked:     supplyGapBlocked,
+      supply_ready_promotable: supplyReadyPromotable,
+      expired_detected:       expiredDetected,
+    },
+  });
+
+  return {
+    run_type:              'import_run',
+    is_evaluation_only:    false,
+    scan_type:             'triggered',
+    scanned_at:            scannedAt,
+    drafts_evaluated:      evalSignals.length,
+    stale_detected:        staleDetected,
+    promotion_recommended: promotionRecommended,
+    supply_gap_blocked:    supplyGapBlocked,
+    supply_ready_promotable: supplyReadyPromotable,
+    expired_detected:      expiredDetected,
+    signals:               evalSignals,
+    scan_action_id:        scanActionId,
+    signals_imported:      importSummary.signals_imported,
+    signals_updated:       importSummary.signals_updated,
+    live_scan_attempted:   false,
+    import_run_available:  true,
+    live_scan_available:   process.env.PLATSBANKEN_SCAN_ENABLED === 'true',
+  };
+}
+
+// Fetch live signals from all enabled connectors, import them, then evaluate.
+// Runs a full live_scan cycle: fetch → import → evaluate.
+// Requires at least one connector with ENABLED=true env var.
+export async function runLiveScanCycle(): Promise<MarketScanResult> {
+  const { platsbankenConnector } = await import('./marketScanConnectors/platsbanken');
+  const { importMarketSignals }  = await import('./marketSignalImport');
+
+  const connectors = [platsbankenConnector].filter((c) => c.enabled);
+  const liveScanAvailable = connectors.length > 0;
+
+  if (!liveScanAvailable) {
+    // No connectors enabled — fall back to evaluation run
+    return runScan('daily');
+  }
+
+  let allSignals:    import('./marketSignalTypes').NormalizedMarketSignal[] = [];
+  let sourcesChecked = 0;
+  let rawFound       = 0;
+  const sourceTypes: import('./marketSignalTypes').MarketSignalSourceType[] = [];
+
+  for (const connector of connectors) {
+    const result = await connector.fetchSignals();
+    allSignals    = allSignals.concat(result.signals);
+    sourcesChecked += result.sources_checked;
+    rawFound       += result.raw_found;
+    sourceTypes.push(connector.source_type as import('./marketSignalTypes').MarketSignalSourceType);
+  }
+
+  const importSummary = await importMarketSignals(allSignals, {
+    run_type:              'live_scan',
+    source_types:          sourceTypes,
+    live_sources_checked:  sourcesChecked,
+    live_signals_found:    rawFound,
+  });
+
+  const { signals: evalSignals } = await evaluateDrafts();
+  const staleDetected            = evalSignals.filter((s) => s.is_stale).length;
+  const promotionRecommended     = evalSignals.filter((s) => s.promotion_recommended).length;
+  const expiredDetected          = evalSignals.filter((s) => s.lifecycle === 'expired').length;
+  const supplyGapBlocked         = evalSignals.filter((s) => s.lifecycle === 'hold_supply_gap').length;
+  const supplyReadyPromotable    = evalSignals.filter((s) => s.lifecycle === 'ready_for_internal_promotion').length;
+
+  const scanActionId = await logAction({
+    action_type:  'company_need_daily_scan_completed',
+    triggered_by: 'agent:market_agent_v1:live_scan',
+    target_type:  'market_scan',
+    target_id:    randomUUID(),
+    status:       'completed',
+    result: {
+      run_type:               'live_scan',
+      is_evaluation_only:     false,
+      live_sources_checked:   sourcesChecked,
+      live_signals_found:     rawFound,
+      signals_imported:       importSummary.signals_imported,
+      signals_updated:        importSummary.signals_updated,
+      drafts_evaluated:       evalSignals.length,
+      stale_detected:         staleDetected,
+      promotion_recommended:  promotionRecommended,
+      supply_gap_blocked:     supplyGapBlocked,
+      supply_ready_promotable: supplyReadyPromotable,
+      expired_detected:       expiredDetected,
+    },
+  });
+
+  return {
+    run_type:              'live_scan',
+    is_evaluation_only:    false,
+    scan_type:             'weekly',
+    scanned_at:            importSummary.completed_at,
+    drafts_evaluated:      evalSignals.length,
+    stale_detected:        staleDetected,
+    promotion_recommended: promotionRecommended,
+    supply_gap_blocked:    supplyGapBlocked,
+    supply_ready_promotable: supplyReadyPromotable,
+    expired_detected:      expiredDetected,
+    signals:               evalSignals,
+    scan_action_id:        scanActionId,
+    signals_imported:      importSummary.signals_imported,
+    signals_updated:       importSummary.signals_updated,
+    live_scan_attempted:   true,
+    live_sources_checked:  sourcesChecked,
+    import_run_available:  true,
+    live_scan_available:   true,
+  };
 }
 
 // Evaluate all drafts and return classified signals without triggering DB writes.

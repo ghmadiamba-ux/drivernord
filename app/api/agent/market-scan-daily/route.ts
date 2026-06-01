@@ -37,14 +37,20 @@ async function handleScan(req: NextRequest): Promise<NextResponse> {
   try {
     const result = await runDailyCompanyNeedScan();
     return NextResponse.json({
-      ok:                    true,
-      scan_type:             result.scan_type,
-      scanned_at:            result.scanned_at,
-      drafts_evaluated:      result.drafts_evaluated,
-      stale_detected:        result.stale_detected,
-      promotion_recommended: result.promotion_recommended,
-      expired_detected:      result.expired_detected,
-      scan_action_id:        result.scan_action_id,
+      ok:                      true,
+      run_type:                result.run_type,
+      is_evaluation_only:      result.is_evaluation_only,
+      live_scan_available:     result.live_scan_available ?? false,
+      import_run_available:    result.import_run_available,
+      scan_type:               result.scan_type,
+      scanned_at:              result.scanned_at,
+      drafts_evaluated:        result.drafts_evaluated,
+      stale_detected:          result.stale_detected,
+      promotion_recommended:   result.promotion_recommended,
+      supply_gap_blocked:      result.supply_gap_blocked,
+      supply_ready_promotable: result.supply_ready_promotable,
+      expired_detected:        result.expired_detected,
+      scan_action_id:          result.scan_action_id,
     });
   } catch (err) {
     console.error('[agent/market-scan-daily] failed:', err);

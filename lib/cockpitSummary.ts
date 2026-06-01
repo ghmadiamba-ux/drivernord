@@ -25,9 +25,14 @@ export interface GovernanceSignals {
   migration_016_applied:     boolean;
   migration_017_applied:          boolean;
   queue_batch1_followup_due:     boolean;
-  market_agent_run_type:         'evaluation_run' | 'live_scan' | 'unknown';
-  supply_gap_blocked:            number; // drafts blocked by supply gap at last evaluation
-  supply_ready_promotable:       number; // drafts ready for promotion with confirmed supply
+  market_agent_run_type:         'evaluation_run' | 'import_run' | 'live_scan' | 'unknown';
+  supply_gap_blocked:            number;
+  supply_ready_promotable:       number;
+  last_import_run_at:            string | null;
+  last_live_scan_at:             string | null;
+  signals_imported_last_run:     number;
+  live_scan_available:           boolean;
+  import_run_available:          boolean;
 }
 
 export interface ActiveNeedOverview {
@@ -161,15 +166,25 @@ export async function buildCockpitSummary(): Promise<CockpitSummaryPayload> {
     (r.scheduled_send_at as string) <= threeDaysFromNow,
   );
 
-  // Extract supply observability from last scan result (populated by market agent v2+)
+  // Extract supply + import observability from last scan result
   const lastScanResultRow = ((lastScanResultRes.data ?? []) as Record<string, unknown>[])[0];
   const lastScanResult    = (lastScanResultRow?.result ?? {}) as Record<string, unknown>;
-  const marketAgentRunType: 'evaluation_run' | 'live_scan' | 'unknown' =
-    lastScanResult.run_type === 'evaluation_run' ? 'evaluation_run'
-    : lastScanResult.run_type === 'live_scan'    ? 'live_scan'
-    :                                              'unknown';
-  const supplyGapBlocked      = Number(lastScanResult.supply_gap_blocked      ?? 0);
-  const supplyReadyPromotable = Number(lastScanResult.supply_ready_promotable ?? 0);
+  const rawRunType = lastScanResult.run_type as string | undefined;
+  const marketAgentRunType: 'evaluation_run' | 'import_run' | 'live_scan' | 'unknown' =
+    rawRunType === 'evaluation_run' ? 'evaluation_run'
+    : rawRunType === 'import_run'   ? 'import_run'
+    : rawRunType === 'live_scan'    ? 'live_scan'
+    :                                 'unknown';
+  const supplyGapBlocked       = Number(lastScanResult.supply_gap_blocked      ?? 0);
+  const supplyReadyPromotable  = Number(lastScanResult.supply_ready_promotable ?? 0);
+  const signalsImportedLastRun = Number(lastScanResult.signals_imported        ?? 0);
+  // last_import_run_at and last_live_scan_at from separate system_actions queries
+  // (derived from the same last scan result row for V1 — separate queries in V2)
+  const lastScanCreatedAt    = lastScanResultRow?.created_at as string | null ?? null;
+  const lastImportRunAt      = (rawRunType === 'import_run' || rawRunType === 'live_scan') ? lastScanCreatedAt : null;
+  const lastLiveScanAt       = rawRunType === 'live_scan' ? lastScanCreatedAt : null;
+  const liveScanAvailable    = process.env.PLATSBANKEN_SCAN_ENABLED === 'true';
+  const importRunAvailable   = true; // always true — POST /api/agent/market-import exists
 
   // ─ Derived blocker sets ────────────────────────────────────────────────────
   const dqDriverIds = new Set(
@@ -362,6 +377,11 @@ export async function buildCockpitSummary(): Promise<CockpitSummaryPayload> {
     market_agent_run_type:         marketAgentRunType,
     supply_gap_blocked:            supplyGapBlocked,
     supply_ready_promotable:       supplyReadyPromotable,
+    last_import_run_at:            lastImportRunAt,
+    last_live_scan_at:             lastLiveScanAt,
+    signals_imported_last_run:     signalsImportedLastRun,
+    live_scan_available:           liveScanAvailable,
+    import_run_available:          importRunAvailable,
   };
 
   return {
