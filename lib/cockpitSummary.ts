@@ -35,6 +35,8 @@ export interface GovernanceSignals {
   import_run_available:          boolean;
 }
 
+export type MatchingReadinessLabel = 'NO_SHORTLIST' | 'SHORTLIST_READY' | 'SHORTLIST_STALE';
+
 export interface ActiveNeedOverview {
   need_id:           string;
   company_name:      string;
@@ -49,6 +51,10 @@ export interface ActiveNeedOverview {
   blocked_candidates: number;
   outreach_approved: boolean;
   matching_eligible: boolean;
+  // Matching readiness — no driver PII
+  has_shortlist:     boolean;
+  readiness_label:   MatchingReadinessLabel;
+  matched_at:        string | null; // when shortlist was created
 }
 
 export interface DraftItem {
@@ -208,7 +214,7 @@ export async function buildCockpitSummary(): Promise<CockpitSummaryPayload> {
 
   const [shortlistsRes, targetNamesRes] = await Promise.all([
     needIds.length > 0
-      ? db.from('shortlists').select('id, company_need_id').in('company_need_id', needIds)
+      ? db.from('shortlists').select('id, company_need_id, created_at').in('company_need_id', needIds)
       : Promise.resolve({ data: [] as unknown[], error: null }),
     draftTargetIds.length > 0
       ? db.from('company_research_targets').select('id, company_name').in('id', draftTargetIds)
@@ -239,9 +245,13 @@ export async function buildCockpitSummary(): Promise<CockpitSummaryPayload> {
   }
 
   // ─ Build need-id → entries map ─────────────────────────────────────────────
-  const shortlistToNeed = new Map<string, string>(); // shortlist_id → need_id
+  const shortlistToNeed     = new Map<string, string>();  // shortlist_id → need_id
+  const needToMatchedAt     = new Map<string, string>();  // need_id → shortlist created_at
+  const STALE_SHORTLIST_MS  = 7 * 24 * 60 * 60 * 1000;
+
   for (const sl of shortlistRows) {
     shortlistToNeed.set(sl.id as string, sl.company_need_id as string);
+    needToMatchedAt.set(sl.company_need_id as string, sl.created_at as string);
   }
 
   const needEntries = new Map<string, Array<{ driver_id: string; match_score: number }>>();
@@ -262,7 +272,15 @@ export async function buildCockpitSummary(): Promise<CockpitSummaryPayload> {
     const cleanCount   = entries.filter((e) => !blockedDriverIds.has(e.driver_id)).length;
     const blockedCount = entries.filter((e) => blockedDriverIds.has(e.driver_id)).length;
 
-    const needType = n.need_type as string;
+    const needType   = n.need_type as string;
+    const matchedAt  = needToMatchedAt.get(n.id as string) ?? null;
+    const hasShortlist = entries.length > 0 || matchedAt !== null;
+    const readinessLabel: MatchingReadinessLabel =
+      !hasShortlist ? 'NO_SHORTLIST'
+      : matchedAt && (Date.now() - new Date(matchedAt).getTime()) > STALE_SHORTLIST_MS
+        ? 'SHORTLIST_STALE'
+        : 'SHORTLIST_READY';
+
     return {
       need_id:           n.id             as string,
       company_name:      companyName,
@@ -277,6 +295,9 @@ export async function buildCockpitSummary(): Promise<CockpitSummaryPayload> {
       blocked_candidates: blockedCount,
       outreach_approved: OUTREACH_NEED_TYPES.has(needType),
       matching_eligible: MATCHABLE_NEED_TYPES.has(needType),
+      has_shortlist:     hasShortlist,
+      readiness_label:   readinessLabel,
+      matched_at:        matchedAt,
     };
   });
 

@@ -160,6 +160,25 @@ export async function getShortlist(shortlistId: string): Promise<ShortlistRecord
   };
 }
 
+// Returns the most-recent shortlist for a given company_need, or null if none exists.
+export async function getShortlistByNeedId(needId: string): Promise<{
+  id:                string;
+  created_at:        string;
+  total_shortlisted: number;
+} | null> {
+  const { data, error } = await db
+    .from('shortlists')
+    .select('id, created_at, total_shortlisted')
+    .eq('company_need_id', needId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (error) return null;
+  if (!data || data.length === 0) return null;
+  const row = data[0] as { id: string; created_at: string; total_shortlisted: number };
+  return { id: row.id, created_at: row.created_at, total_shortlisted: row.total_shortlisted };
+}
+
 export async function updateShortlistEntry(
   entryId: string,
   input: { contact_status?: ContactStatus; recruiter_note?: string },
