@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { requireRecruiterAuth } from '../../../../lib/recruiterAuth';
-import { notifyFounderWhatsApp, isFounderWhatsAppEnabled, getWhatsAppFounderPhone } from '../../../../lib/founderNotifier';
+import { notifyFounderWhatsApp, isFounderWhatsAppEnabled } from '../../../../lib/founderNotifier';
+import { getWhatsAppFounderPhone } from '../../../../lib/whatsappClient';
 import { logAction } from '../../../../lib/systemActions';
 import type { PostDuePayload } from '../../../../lib/founderNotifier';
 

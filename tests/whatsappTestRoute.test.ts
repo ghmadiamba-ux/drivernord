@@ -8,9 +8,12 @@ vi.mock('../lib/recruiterAuth', () => ({
 }));
 
 vi.mock('../lib/founderNotifier', () => ({
-  notifyFounderWhatsApp:   vi.fn(),
+  notifyFounderWhatsApp:    vi.fn(),
   isFounderWhatsAppEnabled: vi.fn().mockReturnValue(false),
-  getWhatsAppFounderPhone:  vi.fn().mockReturnValue(''),
+}));
+
+vi.mock('../lib/whatsappClient', () => ({
+  getWhatsAppFounderPhone: vi.fn().mockReturnValue(''),
 }));
 
 vi.mock('../lib/systemActions', () => ({
@@ -19,7 +22,8 @@ vi.mock('../lib/systemActions', () => ({
 
 import { POST } from '../app/api/admin/whatsapp-test/route';
 import { requireRecruiterAuth } from '../lib/recruiterAuth';
-import { notifyFounderWhatsApp, isFounderWhatsAppEnabled, getWhatsAppFounderPhone } from '../lib/founderNotifier';
+import { notifyFounderWhatsApp, isFounderWhatsAppEnabled } from '../lib/founderNotifier';
+import { getWhatsAppFounderPhone } from '../lib/whatsappClient';
 import { logAction } from '../lib/systemActions';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
