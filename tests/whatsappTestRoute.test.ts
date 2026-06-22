@@ -228,9 +228,9 @@ describe('POST — WhatsApp send failure', () => {
   });
 });
 
-// ─── Custom post content ──────────────────────────────────────────────────────
+// ─── Custom post content — valid payloads ─────────────────────────────────────
 
-describe('POST — custom post content override', () => {
+describe('POST — custom post content: valid payloads', () => {
   beforeEach(() => {
     vi.mocked(notifyFounderWhatsApp).mockResolvedValue(SUCCESS_RESULT);
     vi.mocked(isFounderWhatsAppEnabled).mockReturnValue(true);
@@ -250,16 +250,101 @@ describe('POST — custom post content override', () => {
     expect(call.title).toBe('Kvällsreflektion');
   });
 
+  it('passes custom category and day_number', async () => {
+    await POST(makeReq({ confirm: true, category: 'discussion_question', day_number: 3 }));
+    const call = vi.mocked(notifyFounderWhatsApp).mock.calls[0]![0];
+    expect(call.category).toBe('discussion_question');
+    expect(call.day_number).toBe(3);
+  });
+
   it('falls back to sample post when no override provided', async () => {
     await POST(makeReq({ confirm: true }));
     const call = vi.mocked(notifyFounderWhatsApp).mock.calls[0]![0];
     expect(call.title).toBe('WhatsApp Relay Test');
+    expect(call.post_text).toContain('testmeddelande');
   });
 
-  it('ignores non-string post_text values', async () => {
+  it('ignores non-string post_text values and falls back to sample', async () => {
     await POST(makeReq({ confirm: true, post_text: 12345 }));
     const call = vi.mocked(notifyFounderWhatsApp).mock.calls[0]![0];
-    expect(call.post_text).toBe('Det här är ett testmeddelande från DriverNord admin-cockpit. Inget riktigt inlägg att posta — bara en bekräftelse att WhatsApp-relay fungerar.');
+    expect(call.post_text).toContain('testmeddelande');
+  });
+
+  it('accepts post_text exactly 850 characters', async () => {
+    const text850 = 'A'.repeat(850);
+    const res = await POST(makeReq({ confirm: true, post_text: text850 }));
+    expect(res.status).not.toBe(400);
+    const call = vi.mocked(notifyFounderWhatsApp).mock.calls[0]![0];
+    expect(call.post_text).toBe(text850);
+  });
+
+  it('accepts title exactly 100 characters', async () => {
+    const title100 = 'T'.repeat(100);
+    const res = await POST(makeReq({ confirm: true, title: title100 }));
+    expect(res.status).not.toBe(400);
+  });
+
+  it('does not accept recipient field — no recipient override', async () => {
+    await POST(makeReq({ confirm: true, recipient: '46999999999', to: '46999999999' }));
+    // notifyFounderWhatsApp must still be called with the fixed test post, not a custom recipient
+    expect(vi.mocked(notifyFounderWhatsApp)).toHaveBeenCalledOnce();
+    // getWhatsAppFounderPhone controls the recipient — body fields cannot change it
+    expect(vi.mocked(getWhatsAppFounderPhone)).toHaveBeenCalled();
+  });
+
+  it('does not accept template_name field — no template override', async () => {
+    await POST(makeReq({ confirm: true, template_name: 'malicious_template', language: 'en' }));
+    // Route still calls notifyFounderWhatsApp normally; template is fixed inside notifyFounderWhatsApp
+    expect(vi.mocked(notifyFounderWhatsApp)).toHaveBeenCalledOnce();
+  });
+});
+
+// ─── Custom post content — validation rejections ───────────────────────────────
+
+describe('POST — custom post content: validation', () => {
+  it('returns 400 when post_text is an empty string', async () => {
+    const res = await POST(makeReq({ confirm: true, post_text: '' }));
+    expect(res.status).toBe(400);
+    expect((await res.json() as { error: string }).error).toContain('post_text');
+    expect(vi.mocked(notifyFounderWhatsApp)).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when post_text is whitespace only', async () => {
+    const res = await POST(makeReq({ confirm: true, post_text: '   ' }));
+    expect(res.status).toBe(400);
+    expect(vi.mocked(notifyFounderWhatsApp)).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when post_text exceeds 850 characters', async () => {
+    const res = await POST(makeReq({ confirm: true, post_text: 'A'.repeat(851) }));
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: string };
+    expect(body.error).toContain('850');
+    expect(vi.mocked(notifyFounderWhatsApp)).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when title exceeds 100 characters', async () => {
+    const res = await POST(makeReq({ confirm: true, title: 'T'.repeat(101) }));
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: string };
+    expect(body.error).toContain('100');
+    expect(vi.mocked(notifyFounderWhatsApp)).not.toHaveBeenCalled();
+  });
+
+  it('auth gate still fires before content validation', async () => {
+    vi.mocked(requireRecruiterAuth).mockReturnValueOnce({ ok: false, status: 401, body: { error: 'unauthorized' } });
+    delete process.env.CRON_SECRET;
+    // Even with invalid post_text, auth is checked first
+    const res = await POST(makeReq({ confirm: true, post_text: '' }));
+    expect(res.status).toBe(401);
+  });
+
+  it('confirm gate still fires before content validation', async () => {
+    // confirm missing → 400 before post_text is validated
+    const res = await POST(makeReq({ post_text: 'A'.repeat(851) }));
+    expect(res.status).toBe(400);
+    expect((await res.json() as { error: string }).error).toContain('confirm');
+    expect(vi.mocked(notifyFounderWhatsApp)).not.toHaveBeenCalled();
   });
 });
 

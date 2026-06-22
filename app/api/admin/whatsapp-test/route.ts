@@ -65,6 +65,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
+  // Validate optional content fields — only when explicitly provided
+  if (typeof body.post_text === 'string') {
+    if (body.post_text.trim().length === 0) {
+      return NextResponse.json({ error: 'post_text must not be empty' }, { status: 400 });
+    }
+    if (body.post_text.length > 850) {
+      return NextResponse.json(
+        { error: `post_text exceeds 850 character limit (got ${body.post_text.length})` },
+        { status: 400 },
+      );
+    }
+  }
+  if (typeof body.title === 'string' && body.title.length > 100) {
+    return NextResponse.json(
+      { error: `title exceeds 100 character limit (got ${body.title.length})` },
+      { status: 400 },
+    );
+  }
+
   // Build post payload — accept optional content overrides from body
   const post: PostDuePayload = {
     id:             'whatsapp-test-probe',
