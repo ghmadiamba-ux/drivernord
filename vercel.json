@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/agent/shortlist-refresh",
+      "schedule": "0 3 * * *"
+    },
+    {
       "path": "/api/agent/follow-up",
       "schedule": "0 8 * * *"
     },
@@ -11,6 +15,22 @@
     {
       "path": "/api/agent/market-scan-weekly",
       "schedule": "0 4 * * 1"
+    },
+    {
+      "path": "/api/cron/logistikklubb-scheduler",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/logistikklubb-news-fetch",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/logistikklubb-daily-notify",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/logistikklubb-daily-notify",
+      "schedule": "0 17 * * *"
     }
   ]
 }
