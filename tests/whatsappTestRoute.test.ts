@@ -47,16 +47,34 @@ beforeEach(() => {
 // ─── Auth gate ────────────────────────────────────────────────────────────────
 
 describe('POST /api/admin/whatsapp-test — auth', () => {
-  it('returns 401 when not authenticated', async () => {
+  it('returns 401 when not authenticated and no CRON_SECRET', async () => {
     vi.mocked(requireRecruiterAuth).mockReturnValueOnce({ ok: false, status: 401, body: { error: 'unauthorized' } });
+    delete process.env.CRON_SECRET;
     const res = await POST(makeReq({ confirm: true }));
     expect(res.status).toBe(401);
   });
 
   it('does not call notifyFounderWhatsApp when not authenticated', async () => {
     vi.mocked(requireRecruiterAuth).mockReturnValueOnce({ ok: false, status: 401, body: { error: 'unauthorized' } });
+    delete process.env.CRON_SECRET;
     await POST(makeReq({ confirm: true }));
     expect(vi.mocked(notifyFounderWhatsApp)).not.toHaveBeenCalled();
+  });
+
+  it('accepts CRON_SECRET bearer auth as secondary pathway', async () => {
+    vi.mocked(requireRecruiterAuth).mockReturnValueOnce({ ok: false, status: 401, body: { error: 'unauthorized' } });
+    process.env.CRON_SECRET = 'test-cron-secret';
+    vi.mocked(notifyFounderWhatsApp).mockResolvedValueOnce(DRY_RUN_RESULT);
+    vi.mocked(isFounderWhatsAppEnabled).mockReturnValue(false);
+    vi.mocked(getWhatsAppFounderPhone).mockReturnValue('');
+    const reqWithCron = {
+      headers: new Headers({ 'authorization': 'Bearer test-cron-secret', 'content-type': 'application/json' }),
+      json:    () => Promise.resolve({ confirm: true }),
+      cookies: { get: () => undefined },
+    } as unknown as NextRequest;
+    const res = await POST(reqWithCron);
+    expect(res.status).toBe(200);
+    delete process.env.CRON_SECRET;
   });
 });
 
@@ -207,6 +225,41 @@ describe('POST — WhatsApp send failure', () => {
     const res  = await POST(makeReq({ confirm: true }));
     const body = await res.json() as { message_id: string | null };
     expect(body.message_id).toBeNull();
+  });
+});
+
+// ─── Custom post content ──────────────────────────────────────────────────────
+
+describe('POST — custom post content override', () => {
+  beforeEach(() => {
+    vi.mocked(notifyFounderWhatsApp).mockResolvedValue(SUCCESS_RESULT);
+    vi.mocked(isFounderWhatsAppEnabled).mockReturnValue(true);
+    vi.mocked(getWhatsAppFounderPhone).mockReturnValue('46709385267');
+  });
+
+  it('passes custom post_text to notifyFounderWhatsApp', async () => {
+    const customText = 'Kvällsreflektion — en dag i logistik-Sverige avklarad.';
+    await POST(makeReq({ confirm: true, post_text: customText }));
+    const call = vi.mocked(notifyFounderWhatsApp).mock.calls[0]![0];
+    expect(call.post_text).toBe(customText);
+  });
+
+  it('passes custom title to notifyFounderWhatsApp', async () => {
+    await POST(makeReq({ confirm: true, title: 'Kvällsreflektion' }));
+    const call = vi.mocked(notifyFounderWhatsApp).mock.calls[0]![0];
+    expect(call.title).toBe('Kvällsreflektion');
+  });
+
+  it('falls back to sample post when no override provided', async () => {
+    await POST(makeReq({ confirm: true }));
+    const call = vi.mocked(notifyFounderWhatsApp).mock.calls[0]![0];
+    expect(call.title).toBe('WhatsApp Relay Test');
+  });
+
+  it('ignores non-string post_text values', async () => {
+    await POST(makeReq({ confirm: true, post_text: 12345 }));
+    const call = vi.mocked(notifyFounderWhatsApp).mock.calls[0]![0];
+    expect(call.post_text).toBe('Det här är ett testmeddelande från DriverNord admin-cockpit. Inget riktigt inlägg att posta — bara en bekräftelse att WhatsApp-relay fungerar.');
   });
 });
 
