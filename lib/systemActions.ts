@@ -76,7 +76,22 @@ export type ActionType =
   | 'logistikklubb_daily_notify_sent'
   | 'logistikklubb_daily_notify_failed'
   // Stale shortlist refresh cron
-  | 'shortlist_refresh';
+  | 'shortlist_refresh'
+  // Content Engine V1 events
+  | 'content_plan_generated'
+  | 'content_card_created'
+  | 'content_card_approved'
+  | 'content_card_held'
+  | 'content_card_archived'
+  | 'content_card_risk_flagged'
+  | 'content_draft_generated'
+  | 'content_anti_repetition_blocked'
+  | 'content_feedback_recorded'
+  | 'content_plan_week_approved'
+  // Visual Production Pipeline V1 events
+  | 'content_visual_plan_generated'
+  | 'content_visual_plan_updated'
+  | 'content_visual_plan_held';
 
 export type ActionStatus = 'pending' | 'approved' | 'completed' | 'failed' | 'cancelled' | 'needs_review';
 
@@ -91,7 +106,9 @@ export type TargetType =
   | 'outreach_email_queue'
   | 'logistikklubb_scheduled_post'
   | 'logistikklubb_daily_notify'
-  | 'agency_posting_signal';
+  | 'agency_posting_signal'
+  | 'content_campaign_card'
+  | 'content_weekly_plan';
 
 export interface LogActionParams {
   action_type:  ActionType;

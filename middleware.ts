@@ -3,7 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 export function middleware(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
 
-  if (!pathname.startsWith('/recruiter') || pathname.startsWith('/recruiter/login')) {
+  // Require auth for /recruiter/* (except the login page itself) and all /admin/* routes
+  const needsAuth =
+    (pathname.startsWith('/recruiter') && !pathname.startsWith('/recruiter/login')) ||
+    pathname.startsWith('/admin');
+
+  if (!needsAuth) {
     return NextResponse.next();
   }
 
@@ -21,5 +26,5 @@ export function middleware(req: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: ['/recruiter/:path*'],
+  matcher: ['/recruiter/:path*', '/admin/:path*'],
 };
