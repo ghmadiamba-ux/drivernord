@@ -1,0 +1,8 @@
+.env.production
+.env*.production
+.env.local
+.env*.local
+scripts/__pycache__/
+scripts/*.py
+scripts/sim-results.json
+scripts/sim-full-pipeline-results.json
