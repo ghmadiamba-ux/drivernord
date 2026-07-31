@@ -95,6 +95,8 @@ export type CardLifecycleStatus =
   | 'ready'    // passes all checks, eligible for scheduling
   | 'held'     // blocked — similarity, risk, or prerequisite
   | 'archived'; // superseded or cancelled
+// Note: regulatory-held cards use lifecycle_status='held' with a blocked_reason
+// starting with REGULATORY_BLOCKED_REASON_PREFIX from regulatoryContentDetector.ts.
 
 export type FeedbackSignal =
   | 'good_reproduce'          // "This worked well — reproduce this pattern"

@@ -1604,6 +1604,84 @@ function PilotOutreachSection({
   );
 }
 
+// ─── Section I: Logistikklubb Agent Status ───────────────────────────────────
+
+interface LogistikklubbStatus {
+  due:       number;
+  scheduled: number;
+  draft:     number;
+  approved:  number;
+}
+
+function LogistikklubbSection({ status, migrationRequired }: {
+  status:            LogistikklubbStatus | null;
+  migrationRequired: boolean;
+}) {
+  if (migrationRequired) {
+    return (
+      <section>
+        <SectionHeader label="Logistikklubb Agent" />
+        <div className="rounded-lg bg-slate-900 border border-slate-800 px-4 py-3">
+          <p className="text-xs text-slate-500">
+            Migration 017 not applied — Logistikklubb schedule unavailable.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  if (!status) {
+    return (
+      <section>
+        <SectionHeader label="Logistikklubb Agent" />
+        <p className="text-xs text-slate-500">Loading…</p>
+      </section>
+    );
+  }
+
+  const hasDue = status.due > 0;
+
+  return (
+    <section>
+      <SectionHeader label="Logistikklubb Agent" count={status.due} warn={hasDue} />
+      <div className="rounded-lg bg-slate-900 border border-slate-800 px-4 py-3 space-y-3">
+        {hasDue && (
+          <div className="rounded border border-amber-700/40 bg-amber-950/20 px-3 py-2">
+            <p className="text-xs font-semibold text-amber-400">
+              {status.due} inlägg redo att postas — öppna Schedule-fliken i Logistikklubb admin
+            </p>
+          </div>
+        )}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="rounded bg-slate-800/60 px-2.5 py-2 text-center">
+            <p className={`text-base font-bold font-mono tabular-nums ${hasDue ? 'text-amber-400' : 'text-slate-400'}`}>
+              {status.due}
+            </p>
+            <p className="text-xs text-slate-600 mt-0.5">Due</p>
+          </div>
+          <div className="rounded bg-slate-800/60 px-2.5 py-2 text-center">
+            <p className="text-base font-bold font-mono tabular-nums text-cyan-400">{status.scheduled}</p>
+            <p className="text-xs text-slate-600 mt-0.5">Scheduled</p>
+          </div>
+          <div className="rounded bg-slate-800/60 px-2.5 py-2 text-center">
+            <p className="text-base font-bold font-mono tabular-nums text-blue-400">{status.approved}</p>
+            <p className="text-xs text-slate-600 mt-0.5">Approved</p>
+          </div>
+          <div className="rounded bg-slate-800/60 px-2.5 py-2 text-center">
+            <p className="text-base font-bold font-mono tabular-nums text-slate-400">{status.draft}</p>
+            <p className="text-xs text-slate-600 mt-0.5">Draft</p>
+          </div>
+        </div>
+        <div className="pt-1 text-xs">
+          <a href="/admin/logistikklubb" className="text-slate-500 hover:text-slate-300 underline transition-colors">
+            Öppna Logistikklubb admin →
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Section H: Zoho Outreach Queue ──────────────────────────────────────────
 
 type OutreachQueueStatus = 'draft' | 'approved' | 'scheduled' | 'sent' | 'failed' | 'skipped' | 'replied';
@@ -2078,18 +2156,21 @@ export default function GovernanceCockpitPage() {
   const [outreachQueue, setOutreachQueue] = useState<OutreachQueueRow[]>([]);
   const [outreachQueueLoading, setOutreachQueueLoading]                     = useState(true);
   const [outreachQueueMigrationRequired, setOutreachQueueMigrationRequired] = useState(false);
+  const [logistikklubbStatus, setLogistikklubbStatus]                       = useState<LogistikklubbStatus | null>(null);
+  const [logistikklubbMigrationRequired, setLogistikklubbMigrationRequired] = useState(false);
 
   const fetchAll = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [sumRes, qRes, pilotRes, oeqRes] = await Promise.all([
+      const [sumRes, qRes, pilotRes, oeqRes, logRes] = await Promise.all([
         fetch('/api/admin/cockpit-summary'),
         fetch('/api/admin/contacts'),
         fetch('/api/admin/pilot-outreach'),
         fetch('/api/admin/outreach-queue'),
+        fetch('/api/admin/logistikklubb-schedule'),
       ]);
 
-      if (sumRes.status === 401 || qRes.status === 401 || pilotRes.status === 401 || oeqRes.status === 401) {
+      if (sumRes.status === 401 || qRes.status === 401 || pilotRes.status === 401 || oeqRes.status === 401 || logRes.status === 401) {
         router.push('/recruiter/login?next=/admin/cockpit');
         return;
       }
@@ -2117,6 +2198,21 @@ export default function GovernanceCockpitPage() {
         setOutreachQueueMigrationRequired(oeqData.migration_required ?? false);
       }
 
+      if (logRes.ok) {
+        const logData = await logRes.json() as { posts: Array<{ status: string }>; migration_required: boolean };
+        if (logData.migration_required) {
+          setLogistikklubbMigrationRequired(true);
+        } else {
+          const posts = logData.posts ?? [];
+          setLogistikklubbStatus({
+            due:       posts.filter((p) => p.status === 'due').length,
+            scheduled: posts.filter((p) => p.status === 'scheduled').length,
+            approved:  posts.filter((p) => p.status === 'approved').length,
+            draft:     posts.filter((p) => p.status === 'draft').length,
+          });
+        }
+      }
+
       setLastRefresh(new Date());
     } catch {
       setSummaryErr('network_error');
@@ -2125,6 +2221,7 @@ export default function GovernanceCockpitPage() {
       setQueueLoading(false);
       setPilotLoading(false);
       setOutreachQueueLoading(false);
+
     }
   }, [router]);
 
@@ -2322,6 +2419,12 @@ export default function GovernanceCockpitPage() {
           loading={pilotLoading}
         />
 
+        {/* Section I: Logistikklubb Agent */}
+        <LogistikklubbSection
+          status={logistikklubbStatus}
+          migrationRequired={logistikklubbMigrationRequired}
+        />
+
         {/* Section H: Zoho Outreach Queue */}
         <OutreachQueueSection
           items={outreachQueue}
@@ -2333,6 +2436,7 @@ export default function GovernanceCockpitPage() {
         {/* Footer nav */}
         <div className="pt-4 border-t border-slate-800 flex flex-wrap gap-4 text-xs text-slate-600">
           <a href="/admin/contacts"                              className="hover:text-slate-400 transition-colors">Contact Approval Queue</a>
+          <a href="/admin/logistikklubb"                         className="hover:text-slate-400 transition-colors">Logistikklubb Admin</a>
           <a href="/api/admin/operational-intelligence"          className="hover:text-slate-400 transition-colors">Full OI JSON</a>
           <a href="/api/admin/cockpit-summary"                   className="hover:text-slate-400 transition-colors">Cockpit Summary JSON</a>
           <a href="/api/admin/data-quality/scan"                 className="hover:text-slate-400 transition-colors">DQ Scan Endpoint</a>

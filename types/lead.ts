@@ -54,4 +54,20 @@ export interface Lead {
   follow_up_sent: boolean;
   follow_up_at: Date | null;
   follow_up_reason: FollowUpReason | null;
+  // GDPR consent — set at the consent step before registration completes
+  consent_registration_at: Date | null;
+  consent_registration_version: string | null;
+  consent_scope: string | null;
+  // Bemanning/staffing agency consent — the "separate approval" from the main consent scope.
+  // NULL = step not yet reached; TRUE = consented; FALSE = declined.
+  open_to_bemanning: boolean | null;
+  bemanning_consent_at: Date | null;
+  // Acquisition attribution — captured from URL on first chat step
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_content: string | null;
+  utm_term: string | null;
+  landing_page_url: string | null;
+  referrer_url: string | null;
 }

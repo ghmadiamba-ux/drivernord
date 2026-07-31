@@ -134,12 +134,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!checkCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  let slot: DailySlot | undefined;
+  let body: Record<string, unknown> = {};
   try {
-    const body = await req.json() as Record<string, unknown>;
-    if (body.slot === 'morning' || body.slot === 'evening') {
-      slot = body.slot;
-    }
-  } catch { /* no-op — slot stays undefined */ }
+    body = await req.json() as Record<string, unknown>;
+  } catch { /* no-op — body stays empty */ }
+
+  if (body.confirm !== true) {
+    return NextResponse.json(
+      { error: 'confirm: true required for manual trigger' },
+      { status: 400 },
+    );
+  }
+
+  let slot: DailySlot | undefined;
+  if (body.slot === 'morning' || body.slot === 'evening') {
+    slot = body.slot;
+  }
   return handleDailyNotify(slot);
 }

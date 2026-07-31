@@ -5,6 +5,7 @@ import type {
 import { classifyStatus, classifyPriority } from './classify';
 import { computeFollowUp } from './followup';
 import { getNextStep, getStepIndex, type StepId } from './conversation';
+import { looksLikePhoneNumber } from './dataQuality';
 
 export type ApplyStepError = 'missing_answer' | 'invalid_answer';
 
@@ -72,7 +73,30 @@ function applyAnswer(lead: Lead, step: StepId, answer: string | null): ApplyAnsw
     }
     case 'name': {
       if (!answer) return { error: 'missing_answer' };
+      if (looksLikePhoneNumber(answer)) return { error: 'invalid_answer' };
       return { lead: { ...lead, first_name: answer } };
+    }
+    case 'consent': {
+      if (answer !== 'accepted') return { error: 'invalid_answer' };
+      return {
+        lead: {
+          ...lead,
+          consent_registration_at:      new Date(),
+          consent_registration_version: 'driver-consent-v1-2026-05-14',
+          consent_scope:                'driver_registration_matching_no_company_sharing_without_separate_consent',
+        },
+      };
+    }
+    case 'bemanning_open': {
+      if (!answer) return { error: 'missing_answer' };
+      if (!['yes', 'no'].includes(answer)) return { error: 'invalid_answer' };
+      return {
+        lead: {
+          ...lead,
+          open_to_bemanning:   answer === 'yes',
+          bemanning_consent_at: answer === 'yes' ? new Date() : null,
+        },
+      };
     }
     case 'confirmation': {
       return { lead };

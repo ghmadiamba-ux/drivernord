@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import { trackEvent } from '../lib/analytics/metaPixel';
 import type { StepId } from '../lib/conversation';
 
 interface ChatState {
@@ -11,6 +12,24 @@ interface ChatState {
   error: string | null;
   leadPriority: 'HIGH' | 'MEDIUM' | 'LOW' | null;
 }
+
+// ─── Attribution capture ──────────────────────────────────────────────────────
+
+function readAttribution(): Record<string, string | null> {
+  if (typeof window === 'undefined') return {};
+  const params = new URLSearchParams(window.location.search);
+  return {
+    utm_source:       params.get('utm_source'),
+    utm_medium:       params.get('utm_medium'),
+    utm_campaign:     params.get('utm_campaign'),
+    utm_content:      params.get('utm_content'),
+    utm_term:         params.get('utm_term'),
+    landing_page_url: window.location.href   || null,
+    referrer_url:     document.referrer       || null,
+  };
+}
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useChat() {
   const [state, setState] = useState<ChatState>({
@@ -35,7 +54,7 @@ export function useChat() {
     confirmedRef.current = true;
 
     // Capture lead_priority from the confirmation PATCH response.
-    // Even if this fails, the lead is already captured up to 'name'.
+    // Even if this fails, the lead is already captured up to 'consent'.
     fetch(`/api/leads/${leadId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -46,6 +65,15 @@ export function useChat() {
         const priority = data?.lead_priority as 'HIGH' | 'MEDIUM' | 'LOW' | undefined;
         if (priority) {
           setState((s) => ({ ...s, leadPriority: priority }));
+
+          // Fire lead-quality events post-consent (confirmLead is only reachable
+          // after consent → confirmation in the step flow).
+          if (priority === 'MEDIUM' || priority === 'HIGH') {
+            trackEvent('QualifiedDriverLead');
+          }
+          if (priority === 'HIGH') {
+            trackEvent('HighPriorityDriverLead');
+          }
         }
       })
       .catch(() => undefined);
@@ -57,10 +85,11 @@ export function useChat() {
 
     try {
       if (step === 'lang') {
+        const attribution = readAttribution();
         const res = await fetch('/api/leads', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ lang: answer }),
+          body: JSON.stringify({ lang: answer, ...attribution }),
         });
         if (!res.ok) throw new Error();
         const data = await res.json();
@@ -72,6 +101,12 @@ export function useChat() {
           loading: false,
         }));
       } else {
+        // Fire DriverConsentAccepted before the PATCH so the event is sent
+        // even if the network request fails. Always post-user-action.
+        if (step === 'consent' && answer === 'accepted') {
+          trackEvent('DriverConsentAccepted');
+        }
+
         const res = await fetch(`/api/leads/${leadId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },

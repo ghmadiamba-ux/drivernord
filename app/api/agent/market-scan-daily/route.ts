@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runDailyCompanyNeedScan } from '../../../../lib/companyNeedMarketAgent';
+import { syncAgencyDraftsToSignals } from '../../../../lib/agencyScanAgent';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,22 +36,44 @@ async function handleScan(req: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const result = await runDailyCompanyNeedScan();
+    // Run both scans in parallel — agency sync is independent of company need evaluation
+    const [result, agencyResult] = await Promise.allSettled([
+      runDailyCompanyNeedScan(),
+      syncAgencyDraftsToSignals(),
+    ]);
+
+    if (result.status === 'rejected') {
+      console.error('[agent/market-scan-daily] company need scan failed:', result.reason);
+      return NextResponse.json({ error: 'scan_failed' }, { status: 500 });
+    }
+
+    if (agencyResult.status === 'rejected') {
+      console.warn('[agent/market-scan-daily] agency sync failed (non-fatal):', agencyResult.reason);
+    }
+
+    const scan = result.value;
+    const agency = agencyResult.status === 'fulfilled' ? agencyResult.value : null;
+
     return NextResponse.json({
       ok:                      true,
-      run_type:                result.run_type,
-      is_evaluation_only:      result.is_evaluation_only,
-      live_scan_available:     result.live_scan_available ?? false,
-      import_run_available:    result.import_run_available,
-      scan_type:               result.scan_type,
-      scanned_at:              result.scanned_at,
-      drafts_evaluated:        result.drafts_evaluated,
-      stale_detected:          result.stale_detected,
-      promotion_recommended:   result.promotion_recommended,
-      supply_gap_blocked:      result.supply_gap_blocked,
-      supply_ready_promotable: result.supply_ready_promotable,
-      expired_detected:        result.expired_detected,
-      scan_action_id:          result.scan_action_id,
+      run_type:                scan.run_type,
+      is_evaluation_only:      scan.is_evaluation_only,
+      live_scan_available:     scan.live_scan_available ?? false,
+      import_run_available:    scan.import_run_available,
+      scan_type:               scan.scan_type,
+      scanned_at:              scan.scanned_at,
+      drafts_evaluated:        scan.drafts_evaluated,
+      stale_detected:          scan.stale_detected,
+      promotion_recommended:   scan.promotion_recommended,
+      supply_gap_blocked:      scan.supply_gap_blocked,
+      supply_ready_promotable: scan.supply_ready_promotable,
+      expired_detected:        scan.expired_detected,
+      scan_action_id:          scan.scan_action_id,
+      agency_scan: agency ? {
+        agencies_found:    agency.agencies_found,
+        agencies_upserted: agency.agencies_upserted,
+        chronic_count:     agency.chronic_count,
+      } : null,
     });
   } catch (err) {
     console.error('[agent/market-scan-daily] failed:', err);

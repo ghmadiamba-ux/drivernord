@@ -7,12 +7,14 @@ import type {
   ShiftType,
   Urgency,
   CompanyNeedStatus,
+  NeedType,
 } from './companyNeed';
+import { MATCHABLE_NEED_TYPES } from './companyNeed';
 import type { Domain, Region } from '../types/lead';
 
 // ─── CompanyNeedRow ───────────────────────────────────────────────────────────
 
-// Persisted shape — maps directly to the company_needs table (migration 003).
+// Persisted shape — maps directly to the company_needs table (migrations 003 + 015).
 // id, company_id, and created_at are assigned at insert time.
 export interface CompanyNeedRow {
   id:                 string;
@@ -26,6 +28,9 @@ export interface CompanyNeedRow {
   shift_type:         ShiftType;
   urgency:            Urgency;
   status:             CompanyNeedStatus;
+  need_type:          NeedType;
+  source_draft_id:    string | null;
+  metadata:           Record<string, unknown> | null;
 }
 
 // ─── Timestamp helper ─────────────────────────────────────────────────────────
@@ -58,6 +63,9 @@ function companyNeedFromRow(row: Row): CompanyNeedRow {
     shift_type:         row.shift_type as ShiftType,
     urgency:            row.urgency as Urgency,
     status:             row.status as CompanyNeedStatus,
+    need_type:          (row.need_type as NeedType) ?? 'matching_eligible',
+    source_draft_id:    (row.source_draft_id as string | null) ?? null,
+    metadata:           (row.metadata as Record<string, unknown> | null) ?? null,
   };
 }
 
@@ -84,6 +92,7 @@ export async function createCompany(name: string): Promise<Company> {
 export async function createCompanyNeed(
   companyId: string,
   need:      CompanyNeed,
+  opts?: { need_type?: NeedType; source_draft_id?: string; metadata?: Record<string, unknown> },
 ): Promise<CompanyNeedRow> {
   const row: CompanyNeedRow = {
     id:                 randomUUID(),
@@ -97,6 +106,9 @@ export async function createCompanyNeed(
     shift_type:         need.shift_type,
     urgency:            need.urgency,
     status:             need.status,
+    need_type:          opts?.need_type ?? 'matching_eligible',
+    source_draft_id:    opts?.source_draft_id ?? null,
+    metadata:           opts?.metadata ?? null,
   };
 
   const { error } = await db.from('company_needs').insert({
@@ -111,6 +123,9 @@ export async function createCompanyNeed(
     shift_type:         row.shift_type,
     urgency:            row.urgency,
     status:             row.status,
+    need_type:          row.need_type,
+    source_draft_id:    row.source_draft_id,
+    metadata:           row.metadata,
   });
 
   if (error) throw new Error(`companyNeedStore.createCompanyNeed failed: ${error.message}`);
@@ -125,6 +140,46 @@ export async function getOpenCompanyNeeds(): Promise<CompanyNeedRow[]> {
     .eq('status', 'open');
 
   if (error) throw new Error(`companyNeedStore.getOpenCompanyNeeds failed: ${error.message}`);
+  if (!data)  return [];
+
+  return (data as Row[]).map(companyNeedFromRow);
+}
+
+// Returns a map from company_id → company name for the given set of IDs.
+// Used by stale-shortlist refresh to resolve names for the do-not-contact guard
+// without requiring a full join in the matching agent.
+export async function getCompanyNamesForIds(
+  companyIds: string[],
+): Promise<Record<string, string>> {
+  if (companyIds.length === 0) return {};
+
+  const { data, error } = await db
+    .from('companies')
+    .select('id, name')
+    .in('id', companyIds);
+
+  if (error || !data) return {};
+
+  return Object.fromEntries(
+    (data as { id: string; name: string }[]).map((c) => [c.id, c.name]),
+  );
+}
+
+// Returns open needs that are safe for real matching.
+// Uses need_type column (migration 015) to exclude simulation/test/expired rows.
+// When ENABLE_SIMULATION_MATCHING=true, all open needs are included (for controlled testing).
+export async function getMatchableOpenCompanyNeeds(): Promise<CompanyNeedRow[]> {
+  const simulationEnabled = process.env.ENABLE_SIMULATION_MATCHING === 'true';
+
+  if (simulationEnabled) return getOpenCompanyNeeds();
+
+  const { data, error } = await db
+    .from('company_needs')
+    .select('*')
+    .eq('status', 'open')
+    .in('need_type', MATCHABLE_NEED_TYPES as unknown as string[]);
+
+  if (error) throw new Error(`companyNeedStore.getMatchableOpenCompanyNeeds failed: ${error.message}`);
   if (!data)  return [];
 
   return (data as Row[]).map(companyNeedFromRow);

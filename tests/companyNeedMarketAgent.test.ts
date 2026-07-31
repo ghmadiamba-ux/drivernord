@@ -447,6 +447,38 @@ describe('classifyMarketLifecycle', () => {
       missing_fields: ['domain_required'],
     })).toBe('research_discovered');
   });
+
+  it('is_staffing_agency=true → "hold_agency" regardless of score', () => {
+    expect(classifyMarketLifecycle({
+      ...BASE_LIFECYCLE_INPUT,
+      composite:         90,
+      missing_fields:    [],
+      is_staffing_agency: true,
+    })).toBe('hold_agency');
+  });
+
+  it('draft_status="hold_agency" → "hold_agency" even without is_staffing_agency flag', () => {
+    expect(classifyMarketLifecycle({
+      ...BASE_LIFECYCLE_INPUT,
+      draft_status: 'hold_agency',
+    })).toBe('hold_agency');
+  });
+
+  it('is_staffing_agency=true does not override "promoted" (terminal state preserved)', () => {
+    expect(classifyMarketLifecycle({
+      ...BASE_LIFECYCLE_INPUT,
+      draft_status:       'promoted',
+      is_staffing_agency: true,
+    })).toBe('promoted');
+  });
+
+  it('is_staffing_agency=true does not override "rejected" (terminal state preserved)', () => {
+    expect(classifyMarketLifecycle({
+      ...BASE_LIFECYCLE_INPUT,
+      draft_status:       'rejected',
+      is_staffing_agency: true,
+    })).toBe('rejected');
+  });
 });
 
 // ─── isPromotionRecommended ───────────────────────────────────────────────────
@@ -458,7 +490,7 @@ describe('isPromotionRecommended', () => {
 
   const nonPromotion: Array<Parameters<typeof isPromotionRecommended>[0]> = [
     'active_public_signal', 'needs_refresh', 'research_discovered',
-    'expired', 'promoted', 'rejected',
+    'expired', 'promoted', 'rejected', 'hold_supply_gap', 'hold_agency',
   ];
   for (const state of nonPromotion) {
     it(`false for "${state}"`, () => {
@@ -479,7 +511,8 @@ describe('isStale', () => {
   });
 
   const notStale: Array<Parameters<typeof isStale>[0]> = [
-    'active_public_signal', 'research_discovered', 'ready_for_internal_promotion', 'promoted', 'rejected',
+    'active_public_signal', 'research_discovered', 'ready_for_internal_promotion',
+    'promoted', 'rejected', 'hold_supply_gap', 'hold_agency',
   ];
   for (const state of notStale) {
     it(`false for "${state}"`, () => {
@@ -494,6 +527,7 @@ describe('buildRecommendedAction', () => {
   const states: Array<Parameters<typeof buildRecommendedAction>[0]> = [
     'ready_for_internal_promotion', 'needs_refresh', 'expired',
     'research_discovered', 'active_public_signal', 'promoted', 'rejected',
+    'hold_supply_gap', 'hold_agency',
   ];
 
   for (const state of states) {
@@ -517,6 +551,12 @@ describe('buildRecommendedAction', () => {
   it('expired action mentions expired or archive', () => {
     const action = buildRecommendedAction('expired', 5);
     expect(action.toLowerCase()).toMatch(/expired|archive/);
+  });
+
+  it('hold_agency action mentions staffing or agency and excludes from outreach', () => {
+    const action = buildRecommendedAction('hold_agency', 80);
+    expect(action.toLowerCase()).toMatch(/staffing|bemanning|agency/);
+    expect(action.toLowerCase()).toMatch(/exclud|agency_posting/);
   });
 });
 
@@ -1217,5 +1257,203 @@ describe('source and contact lineage', () => {
     // Company contact details used only for scoring — not in logged output
     expect(payload).not.toContain('admin@test.se');
     expect(payload).not.toContain('Admin User');
+  });
+});
+
+// ─── Agency gate — classifyMarketLifecycle (pure) ────────────────────────────
+
+describe('agency gate — classifyMarketLifecycle with is_staffing_agency', () => {
+  it('high-composite agency draft → hold_agency, NOT ready_for_internal_promotion', () => {
+    const lifecycle = classifyMarketLifecycle({
+      draft_status:       'ready_for_review',
+      missing_fields:     [],
+      scan_date_iso:      daysAgoIso(2),
+      composite:          90,    // above PROMOTION_SCORE_THRESHOLD
+      supply_fit:         'SUPPLY_READY',
+      is_staffing_agency: true,
+    });
+    expect(lifecycle).toBe('hold_agency');
+    expect(isPromotionRecommended(lifecycle)).toBe(false);
+  });
+
+  it('agency draft with SUPPLY_READY → hold_agency (supply status is irrelevant for agencies)', () => {
+    const lifecycle = classifyMarketLifecycle({
+      ...BASE_LIFECYCLE_INPUT,
+      composite:          85,
+      supply_fit:         'SUPPLY_READY',
+      is_staffing_agency: true,
+    });
+    expect(lifecycle).toBe('hold_agency');
+  });
+
+  it('agency draft is never stale — hold_agency does not count as stale', () => {
+    const lifecycle = classifyMarketLifecycle({
+      draft_status:       'ready_for_review',
+      missing_fields:     [],
+      scan_date_iso:      daysAgoIso(STALE_DAYS + 5), // would normally be needs_refresh
+      composite:          70,
+      is_staffing_agency: true,
+    });
+    expect(lifecycle).toBe('hold_agency');
+    expect(isStale(lifecycle)).toBe(false);
+  });
+
+  it('non-agency draft with same inputs → normal lifecycle (gate is conditional)', () => {
+    const lifecycle = classifyMarketLifecycle({
+      draft_status:       'ready_for_review',
+      missing_fields:     [],
+      scan_date_iso:      daysAgoIso(2),
+      composite:          90,
+      supply_fit:         'SUPPLY_READY',
+      is_staffing_agency: false,
+    });
+    expect(lifecycle).toBe('ready_for_internal_promotion');
+  });
+
+  it('omitting is_staffing_agency (legacy call) still produces normal lifecycle', () => {
+    const lifecycle = classifyMarketLifecycle({
+      ...BASE_LIFECYCLE_INPUT,
+      composite:  90,
+      supply_fit: 'SUPPLY_READY',
+      // no is_staffing_agency
+    });
+    expect(lifecycle).toBe('ready_for_internal_promotion');
+  });
+});
+
+// ─── Agency gate — full pipeline (Jobwise AB, Simplex, Rekryteringsgruppen) ───
+
+describe('agency gate — evaluateDrafts pipeline — known agencies cannot be promoted', () => {
+  const AGENCY_TARGETS = [
+    { id: 'tgt-jobwise', company_name: 'Jobwise AB' },
+    { id: 'tgt-simplex', company_name: 'Simplex Bemanning AB' },
+    { id: 'tgt-rek',     company_name: 'Rekryteringsgruppen i Stockholm AB' },
+    { id: 'tgt-arena',   company_name: 'Arena Personal' },
+  ];
+
+  beforeEach(() => {
+    vi.mocked(listDrafts).mockResolvedValue(
+      AGENCY_TARGETS.map((t, i) =>
+        makeDraftRow({
+          id:           `agency-draft-${i}`,
+          target_id:    t.id,
+          draft_status: 'ready_for_review',
+          missing_fields: [],
+          metadata: {
+            recruitment_pain_score: 90,
+            drivernord_fit_score:    9,
+            contactability_score:   90,
+            scan_date:               daysAgoIso(2),
+            ad_status:              'repeated_ads',
+          },
+        }),
+      ) as never,
+    );
+    setupDbMocks(
+      AGENCY_TARGETS.map((t) => ({
+        id: t.id, company_name: t.company_name,
+        barrier_level: 'low', contact_email: 'info@agency.se', decision_maker_name: 'HR',
+      })),
+      // Ample supply — so supply is not the reason for blocking
+      [
+        { license_required: 'CE', domain_required: 'schakt_bygg' },
+        { license_required: 'CE', domain_required: 'schakt_bygg' },
+        { license_required: 'CE', domain_required: 'schakt_bygg' },
+      ],
+    );
+  });
+
+  it('Jobwise AB — lifecycle is hold_agency', async () => {
+    const signals = await refreshCompanyNeedDrafts();
+    const jobwise = signals.find((s) => s.company_name === 'Jobwise AB')!;
+    expect(jobwise).toBeDefined();
+    expect(jobwise.lifecycle).toBe('hold_agency');
+  });
+
+  it('Jobwise AB — promotion_recommended is false', async () => {
+    const signals = await refreshCompanyNeedDrafts();
+    const jobwise = signals.find((s) => s.company_name === 'Jobwise AB')!;
+    expect(jobwise.promotion_recommended).toBe(false);
+  });
+
+  it('Simplex Bemanning AB — lifecycle is hold_agency', async () => {
+    const signals = await refreshCompanyNeedDrafts();
+    const simplex = signals.find((s) => s.company_name === 'Simplex Bemanning AB')!;
+    expect(simplex.lifecycle).toBe('hold_agency');
+    expect(simplex.promotion_recommended).toBe(false);
+  });
+
+  it('Rekryteringsgruppen i Stockholm AB — lifecycle is hold_agency', async () => {
+    const signals = await refreshCompanyNeedDrafts();
+    const rek = signals.find((s) => s.company_name === 'Rekryteringsgruppen i Stockholm AB')!;
+    expect(rek.lifecycle).toBe('hold_agency');
+    expect(rek.promotion_recommended).toBe(false);
+  });
+
+  it('Arena Personal — lifecycle is hold_agency', async () => {
+    const signals = await refreshCompanyNeedDrafts();
+    const arena = signals.find((s) => s.company_name === 'Arena Personal')!;
+    expect(arena.lifecycle).toBe('hold_agency');
+    expect(arena.promotion_recommended).toBe(false);
+  });
+
+  it('no agency draft appears in promotion-recommended scan results', async () => {
+    const result = await runDailyCompanyNeedScan();
+    expect(result.promotion_recommended).toBe(0);
+    expect(result.supply_ready_promotable).toBe(0);
+  });
+
+  it('agency drafts are is_stale=false', async () => {
+    const signals = await refreshCompanyNeedDrafts();
+    for (const s of signals) {
+      expect(s.is_stale).toBe(false);
+    }
+  });
+
+  it('recommended_action for agency drafts mentions staffing or agency', async () => {
+    const signals = await refreshCompanyNeedDrafts();
+    const jobwise = signals.find((s) => s.company_name === 'Jobwise AB')!;
+    expect(jobwise.recommended_action.toLowerCase()).toMatch(/staffing|bemanning|agency/);
+  });
+
+  it('scan does NOT create outreach queue entries for agency drafts', async () => {
+    await runDailyCompanyNeedScan();
+    const calls = vi.mocked(logAction).mock.calls;
+    const hasOutreachAction = calls.some((c) => {
+      const type = (c[0] as { action_type: string }).action_type;
+      return type.includes('outreach') || type.includes('contact') || type.includes('sms');
+    });
+    expect(hasOutreachAction).toBe(false);
+  });
+});
+
+// ─── Agency gate — bemanning keyword detection via description ────────────────
+
+describe('agency gate — description-based detection in evaluateDrafts', () => {
+  it('company with agency signal in description_snippet is blocked', async () => {
+    vi.mocked(listDrafts).mockResolvedValue([
+      makeDraftRow({
+        id:           'hidden-agency-draft',
+        target_id:    'tgt-hidden',
+        draft_status: 'ready_for_review',
+        missing_fields: [],
+        metadata: {
+          recruitment_pain_score:   90,
+          drivernord_fit_score:      9,
+          contactability_score:     90,
+          scan_date:                 daysAgoIso(2),
+          ad_status:                'repeated_ads',
+          description_snippet:      'Vår kund i Södertälje söker en CE-förare.',
+        },
+      }),
+    ] as never);
+    setupDbMocks(
+      [{ id: 'tgt-hidden', company_name: 'Unknown Logistics AB', barrier_level: 'low', contact_email: null, decision_maker_name: null }],
+      [{ license_required: 'CE', domain_required: 'schakt_bygg' }, { license_required: 'CE', domain_required: 'schakt_bygg' }],
+    );
+
+    const signals = await refreshCompanyNeedDrafts();
+    expect(signals[0].lifecycle).toBe('hold_agency');
+    expect(signals[0].promotion_recommended).toBe(false);
   });
 });

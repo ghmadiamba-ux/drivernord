@@ -1,6 +1,6 @@
 import type { StepId } from './conversation';
 
-export type StepType = 'options' | 'text' | 'email' | 'terminal';
+export type StepType = 'options' | 'text' | 'email' | 'terminal' | 'consent';
 
 export interface BilingualString {
   sv: string;
@@ -24,7 +24,7 @@ export interface StepDef {
 export const STEP_CONFIG: Partial<Record<StepId, StepDef>> = {
   lang: {
     type: 'options',
-    question: { sv: 'Välkommen! / Welcome!', en: 'Välkommen! / Welcome!' },
+    question: { sv: 'Välj språk / Choose language', en: 'Välj språk / Choose language' },
     options: [
       { label: { sv: 'Svenska', en: 'Svenska' }, value: 'sv' },
       { label: { sv: 'English', en: 'English' }, value: 'en' },
@@ -178,6 +178,42 @@ export const STEP_CONFIG: Partial<Record<StepId, StepDef>> = {
     inputMode: 'text',
   },
 
+  consent: {
+    type: 'consent',
+    question: {
+      sv: 'Godkänn innan vi registrerar dig',
+      en: 'Your consent before we register you',
+    },
+    message: {
+      sv: 'Jag samtycker till att DriverNord lagrar och behandlar mina uppgifter för att kunna matcha mig med relevanta transportföretag. Mina uppgifter delas inte med något företag utan mitt separata godkännande.',
+      en: 'I consent to DriverNord storing and processing my data to match me with relevant transport companies. My data will not be shared with any company without my separate approval.',
+    },
+  },
+
+  bemanning_open: {
+    type: 'options',
+    question: {
+      sv: 'Är du öppen för uppdrag via bemannings- eller rekryteringsföretag?',
+      en: 'Are you open to assignments through staffing or recruitment companies?',
+    },
+    options: [
+      {
+        label: {
+          sv: 'Ja — DriverNord får matcha mig med bemanningsföretag',
+          en: 'Yes — DriverNord may match me with staffing companies',
+        },
+        value: 'yes',
+      },
+      {
+        label: {
+          sv: 'Nej — enbart direktmatchning med åkerier',
+          en: 'No — direct matching with transport companies only',
+        },
+        value: 'no',
+      },
+    ],
+  },
+
   confirmation: {
     type: 'terminal',
     question: { sv: 'Tack!', en: 'Thank you!' },
@@ -190,12 +226,12 @@ export const STEP_CONFIG: Partial<Record<StepId, StepDef>> = {
   disqualified: {
     type: 'terminal',
     question: {
-      sv: 'Tack för ditt intresse.',
-      en: 'Thank you for your interest.',
+      sv: 'Det passar inte just nu.',
+      en: 'Not a match right now.',
     },
     message: {
-      sv: 'Den här tjänsten kräver ett yrkeskörkort (C, CE eller D). Vi sparar dina uppgifter om kraven förändras.',
-      en: 'This role requires a professional driving license (C, CE, or D). We will keep your information if requirements change.',
+      sv: 'DriverNord matchar CE- och C-förare med transportföretag i Stockholm. Tjänsten kräver ett yrkeskörkort (C, CE eller D) med giltig YKB. Om du tar körkort i framtiden är du välkommen tillbaka.',
+      en: 'DriverNord matches CE and C drivers with transport companies in Stockholm. The service requires a professional driving licence (C, CE or D) with valid YKB. You are welcome back if that changes.',
     },
   },
 };

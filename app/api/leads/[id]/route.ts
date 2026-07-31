@@ -103,7 +103,12 @@ export async function PATCH(
     return NextResponse.json({ error: 'supabase_error' }, { status: 500 });
   }
 
-  if (result.lead.lead_status === 'ready_for_ingestion') {
+  // Only ingest when status transitions TO ready_for_ingestion in this request.
+  // Prevents double-ingest when the confirmation PATCH follows the consent PATCH
+  // (both result in ready_for_ingestion once consent index 7 is reached).
+  const wasAlreadyIngested = lead.lead_status === 'ready_for_ingestion';
+
+  if (result.lead.lead_status === 'ready_for_ingestion' && !wasAlreadyIngested) {
     const ingestResult = await ingestLead(result.lead.id);
     if (!ingestResult.ok) {
       console.error('[auto-ingest] failed for lead', result.lead.id, '—', ingestResult.error);

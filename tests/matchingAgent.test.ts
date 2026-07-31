@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../lib/companyNeedStore', () => ({
-  getOpenCompanyNeeds: vi.fn(),
+  getMatchableOpenCompanyNeeds: vi.fn(),
 }));
 
 vi.mock('../lib/ingestedDriverStore', () => ({
@@ -25,7 +25,7 @@ vi.mock('../lib/contactAgent', () => ({
 }));
 
 import { runMatchingAgent } from '../lib/matchingAgent';
-import { getOpenCompanyNeeds } from '../lib/companyNeedStore';
+import { getMatchableOpenCompanyNeeds } from '../lib/companyNeedStore';
 import { getActiveIngestedDrivers } from '../lib/ingestedDriverStore';
 import { buildShortlist } from '../lib/matchingEngine';
 import { createShortlist } from '../lib/shortlistStore';
@@ -80,7 +80,7 @@ const CREATE_RESULT = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(getOpenCompanyNeeds).mockResolvedValue([NEED_ROW] as never);
+  vi.mocked(getMatchableOpenCompanyNeeds).mockResolvedValue([NEED_ROW] as never);
   vi.mocked(getActiveIngestedDrivers).mockResolvedValue([DRIVER] as never);
   vi.mocked(buildShortlist).mockReturnValue(SHORTLIST_RESULT as never);
   vi.mocked(createShortlist).mockResolvedValue(CREATE_RESULT);
@@ -157,7 +157,7 @@ describe('runMatchingAgent — contact agent trigger', () => {
 
 describe('runMatchingAgent — need not found', () => {
   it('returns ok:false with error need_not_found', async () => {
-    vi.mocked(getOpenCompanyNeeds).mockResolvedValue([]);
+    vi.mocked(getMatchableOpenCompanyNeeds).mockResolvedValue([]);
     const r = await runMatchingAgent({ needId: 'missing', triggeredBy: 'human' });
     expect(r.ok).toBe(false);
     if (r.ok) return;
@@ -165,7 +165,7 @@ describe('runMatchingAgent — need not found', () => {
   });
 
   it('does not log a system action when need is not found', async () => {
-    vi.mocked(getOpenCompanyNeeds).mockResolvedValue([]);
+    vi.mocked(getMatchableOpenCompanyNeeds).mockResolvedValue([]);
     await runMatchingAgent({ needId: 'missing', triggeredBy: 'human' });
     expect(vi.mocked(logAction)).not.toHaveBeenCalled();
   });
@@ -173,7 +173,7 @@ describe('runMatchingAgent — need not found', () => {
 
 describe('runMatchingAgent — DB errors', () => {
   it('returns ok:false and logs failed match_run when getOpenCompanyNeeds throws', async () => {
-    vi.mocked(getOpenCompanyNeeds).mockRejectedValue(new Error('DB timeout'));
+    vi.mocked(getMatchableOpenCompanyNeeds).mockRejectedValue(new Error('DB timeout'));
     const r = await runMatchingAgent({ needId: 'need-1', triggeredBy: 'human' });
     expect(r.ok).toBe(false);
     const failLog = vi.mocked(logAction).mock.calls.find(([p]) => p.status === 'failed');

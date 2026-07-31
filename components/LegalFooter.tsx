@@ -34,6 +34,11 @@ export function LegalFooter() {
                   Registrera dig
                 </Link>
               </li>
+              <li>
+                <Link href="/logistikklubb" className="text-blue-400 hover:text-white text-sm transition-colors">
+                  Logistikklubb
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -104,12 +109,20 @@ export function LegalFooter() {
               <span className="italic text-blue-600">[kommer snart]</span>
             </p>
           </div>
-          <a
-            href="mailto:hej@drivernord.com"
-            className="text-blue-400 hover:text-white text-xs transition-colors"
-          >
-            hej@drivernord.com
-          </a>
+          <div className="flex items-center gap-4">
+            <a
+              href="tel:+46709385267"
+              className="text-blue-400 hover:text-white text-xs transition-colors"
+            >
+              070-938 52 67
+            </a>
+            <a
+              href="mailto:hej@drivernord.com"
+              className="text-blue-400 hover:text-white text-xs transition-colors"
+            >
+              hej@drivernord.com
+            </a>
+          </div>
         </div>
       </div>
     </footer>

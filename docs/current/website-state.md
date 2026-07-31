@@ -90,7 +90,7 @@
 
 **OG image:** `/company/opengraph-image` (edge route)
 
-**Email:** All company CTAs point to `hej@drivernord.com`. Inbox status must be verified operationally.
+**Email:** All company CTAs point to `hej@drivernord.se`. Inbox status must be verified operationally.
 
 ---
 
@@ -116,7 +116,7 @@ All three primary legal pages are marked with a yellow "Preliminär version" ban
 
 ### /privacy
 - 9 sections covering: data controller, data collected, purpose, legal basis, SMS note, storage, rights, third parties, cookies, changes
-- Accurately states: no active SMS system, manual coordinator contact, drivers@drivernord.com for GDPR requests
+- Accurately states: no active SMS system, manual coordinator contact, drivers@drivernord.se for GDPR requests
 - Mentions `recruiter_session` cookie specifically
 - Needs legal review before removing "Preliminär version" banner
 
@@ -137,7 +137,7 @@ All three primary legal pages are marked with a yellow "Preliminär version" ban
 
 ### /contact
 - 3 cards: drivers (registration/matching), transport companies (partnership), GDPR
-- All point to `hej@drivernord.com`
+- All point to `hej@drivernord.se`
 - Explicitly states 1-2 business day response time
 
 ---
@@ -177,9 +177,9 @@ All three primary legal pages are marked with a yellow "Preliminär version" ban
 
 | Gap | Impact | Status |
 |-----|--------|--------|
-| ~~`metadataBase` not in root layout~~ | ~~OG images use localhost URL for all pages~~ | **RESOLVED** — `metadataBase: new URL('https://drivernord.com')` confirmed in `app/layout.tsx` |
+| ~~`metadataBase` not in root layout~~ | ~~OG images use localhost URL for all pages~~ | **RESOLVED** — `metadataBase: new URL('https://drivernord.se')` confirmed in `app/layout.tsx` |
 | No brand/logo on /chat | Trust gap during driver registration | Open |
 | Legal pages not reviewed | Cannot represent as final policy | Open — legal review needed |
-| `hej@drivernord.com` inbox status unknown | Company and GDPR inquiries may be lost | Open — verify operationally |
+| `hej@drivernord.se` inbox status unknown | Company and GDPR inquiries may be lost | Open — verify operationally |
 | /company/ai-agenter not in main nav | Hard to discover | Open |
 | No company self-service intake form | Companies cannot register needs without recruiter mediation | Open — Phase 2 |

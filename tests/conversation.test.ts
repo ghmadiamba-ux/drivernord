@@ -62,8 +62,16 @@ describe('getNextStep — linear transitions', () => {
     expect(getNextStep('email', empty)).toBe('name');
   });
 
-  it('name → confirmation', () => {
-    expect(getNextStep('name', empty)).toBe('confirmation');
+  it('name → consent', () => {
+    expect(getNextStep('name', empty)).toBe('consent');
+  });
+
+  it('consent → bemanning_open', () => {
+    expect(getNextStep('consent', empty)).toBe('bemanning_open');
+  });
+
+  it('bemanning_open → confirmation', () => {
+    expect(getNextStep('bemanning_open', empty)).toBe('confirmation');
   });
 });
 
@@ -141,7 +149,7 @@ describe('isTerminal', () => {
   const nonTerminal: StepId[] = [
     'lang', 'region', 'relocate', 'license',
     'ykb', 'driver_card', 'domain', 'availability', 'shift_preference',
-    'phone', 'email', 'name',
+    'phone', 'email', 'name', 'consent', 'bemanning_open',
   ];
 
   nonTerminal.forEach((step) => {
@@ -166,7 +174,9 @@ describe('getStepIndex', () => {
   it('phone → 6', () => expect(getStepIndex('phone')).toBe(6));
   it('email → 6 (same coarse index as phone)', () => expect(getStepIndex('email')).toBe(6));
   it('name → 6 (same coarse index as phone)', () => expect(getStepIndex('name')).toBe(6));
-  it('confirmation → 7 (satisfies classify.ts >= 7 check)', () => expect(getStepIndex('confirmation')).toBe(7));
+  it('consent → 7 (triggers ready_for_ingestion on classify.ts >= 7 check)', () => expect(getStepIndex('consent')).toBe(7));
+  it('bemanning_open → 7 (same stage as consent — end-of-flow consent step)', () => expect(getStepIndex('bemanning_open')).toBe(7));
+  it('confirmation → 7 (same index as consent — terminal display step)', () => expect(getStepIndex('confirmation')).toBe(7));
   it('disqualified → -1', () => expect(getStepIndex('disqualified')).toBe(-1));
 });
 
@@ -186,7 +196,7 @@ describe('full path — Stockholm driver (no relocate step)', () => {
     expect(path).toEqual([
       'lang', 'region', 'license', 'ykb',
       'driver_card', 'domain', 'availability', 'shift_preference',
-      'phone', 'email', 'name', 'confirmation',
+      'phone', 'email', 'name', 'consent', 'bemanning_open', 'confirmation',
     ]);
     expect(path).not.toContain('relocate');
     expect(path).not.toContain('disqualified');
@@ -209,7 +219,7 @@ describe('full path — outside Stockholm driver (includes relocate)', () => {
     expect(path).toEqual([
       'lang', 'region', 'relocate', 'license', 'ykb',
       'driver_card', 'domain', 'availability', 'shift_preference',
-      'phone', 'email', 'name', 'confirmation',
+      'phone', 'email', 'name', 'consent', 'bemanning_open', 'confirmation',
     ]);
     expect(path).toContain('relocate');
     expect(path).not.toContain('disqualified');

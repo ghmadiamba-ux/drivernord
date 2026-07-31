@@ -5,7 +5,20 @@ import { LegalFooter } from '@/components/LegalFooter';
 export const metadata: Metadata = {
   metadataBase: new URL('https://drivernord.com'),
   title: 'Användarvillkor — DriverNord',
-  description: 'Villkor för att använda DriverNords tjänster.',
+  description: 'Användarvillkor för DriverNords matchningstjänst för chaufförer och transportföretag. DriverNord är en förmedlingstjänst — inte arbetsgivare och inte bemanningsföretag.',
+  openGraph: {
+    title: 'Användarvillkor — DriverNord',
+    description: 'Användarvillkor för DriverNords matchningstjänst för chaufförer och transportföretag.',
+    url: 'https://drivernord.com/terms',
+    siteName: 'DriverNord',
+    locale: 'sv_SE',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Användarvillkor — DriverNord',
+    description: 'Användarvillkor för DriverNords matchningstjänst för chaufförer och transportföretag.',
+  },
 };
 
 const SECTIONS = [

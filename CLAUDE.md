@@ -2,6 +2,34 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## DriverNord Doctrine Summary
+
+Read this before any task. Older documents may contradict it — this section governs.
+
+**DriverNord is a logistics capacity network, not a driver-leads-only business.**
+
+- Three commercial paths: Matchning/Kortlist · Rekrytering/Introduktion · Bemanning/Logistikpersonal
+- **Bemanning is a legitimate planned commercial offer.** The system must prepare for it. The founder handles legal/operational prerequisites (Kollektivavtal, Fora, payroll) before the first live staffed mission.
+- **Worker scope covers all logistics workers**, not only CE/C/D drivers: lagerpersonal, truckförare, terminalpersonal, orderplock, lastning/lossning, distribution drivers, fjärr, schakt/bygg, kyl/frys, ADR/tank.
+- **Staffing/bemanning companies are NOT normal client prospects.** They are market signal sources and belong in `agency_posting_signals` with `draft_status = hold_agency`. This is enforced in code — do not route agency drafts through the normal client pipeline.
+- **Distribution must run in parallel with product.** Every technical task should connect to supply, trust, distribution, commercial trigger, monetization, or simplification.
+- **Facebook/Meta organic posting is required**, not optional. Logistikklubb content must expand to all logistics worker categories.
+- **Every market scan must produce** at least one of: business action, supply gap signal, prospecting target, community/content signal, or staffing/partner intelligence signal.
+- **The founder has ~20 employees of prior experience** in Sweden. Do not over-index on basic employer/legal warnings in documentation.
+- **Strategy is adaptive.** Older roadmap items that say "not in target market" or "Phase 9+" for bemanning/warehouse are superseded. See `docs/business/strategy/current-driverNord-doctrine.md`.
+
+**Operative doctrine documents (in priority order):**
+1. `docs/business/strategy/current-driverNord-doctrine.md` — governing doctrine
+2. `docs/business/strategy/commercial-offer-model.md` — three commercial paths
+3. `docs/business/distribution/distribution-doctrine.md` — distribution rules
+4. `docs/business/logistikbemanning/scope-and-transition-plan.md` — worker scope + bemanning transition
+
+**Safety constraints (always apply regardless of doctrine):**
+- No outreach (email/SMS/WhatsApp) without explicit founder approval
+- No production database changes without explicit founder authorization
+- No secrets exposed
+- AGENT_CONTACT_MODE must not be changed automatically
+
 ## Commands
 
 ```bash
@@ -36,7 +64,7 @@ Driver fills chat → POST /api/leads → PATCH /api/leads/{id} (per step)
 
 ### Step routing
 
-Full flow: `lang → region → (relocate) → license → ykb → driver_card → domain → availability → shift_preference → phone → email → name → confirmation`
+Full flow: `lang → region → (relocate) → license → ykb → driver_card → domain → availability → shift_preference → phone → email → name → consent → confirmation`
 
 - `region=stockholm` skips the `relocate` step
 - `license=none` routes directly to `disqualified` (terminal)

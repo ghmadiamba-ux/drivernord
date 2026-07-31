@@ -5,7 +5,20 @@ import { LegalFooter } from '@/components/LegalFooter';
 export const metadata: Metadata = {
   metadataBase: new URL('https://drivernord.com'),
   title: 'Cookiepolicy — DriverNord',
-  description: 'Information om hur DriverNord använder cookies.',
+  description: 'Vilka cookies DriverNord använder, varför, och hur du hanterar dina cookieinställningar.',
+  openGraph: {
+    title: 'Cookiepolicy — DriverNord',
+    description: 'Vilka cookies DriverNord använder, varför, och hur du hanterar dina cookieinställningar.',
+    url: 'https://drivernord.com/cookies',
+    siteName: 'DriverNord',
+    locale: 'sv_SE',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Cookiepolicy — DriverNord',
+    description: 'Vilka cookies DriverNord använder, varför, och hur du hanterar dina cookieinställningar.',
+  },
 };
 
 const COOKIES_TABLE = [
@@ -14,7 +27,18 @@ const COOKIES_TABLE = [
     purpose: 'Autentisering för rekryteringsverktyget (cockpit)',
     duration: '7 dagar',
     type: 'Nödvändig',
-    notes: 'HTTP-only. Sätts aldrig på chaufförsflödet. Används aldrig för spårning.',
+  },
+  {
+    name: '_fbp',
+    purpose: 'Meta Pixel — mäter effekten av annonsering (Facebook/Instagram)',
+    duration: '90 dagar',
+    type: 'Marknadsföring (kräver samtycke)',
+  },
+  {
+    name: '_fbc',
+    purpose: 'Meta — kopplar besök till en Facebook-annons du klickade på',
+    duration: '90 dagar',
+    type: 'Marknadsföring (kräver samtycke)',
   },
 ];
 
@@ -25,19 +49,19 @@ const SECTIONS = [
   },
   {
     heading: '2. Cookies vi använder',
-    body: 'DriverNord använder ett minimum av cookies. Vi använder inga analytics-cookies, inga marknadsföringscookies och inga spårningscookies. Se tabellen nedan.',
+    body: 'DriverNord använder nödvändiga cookies för att tjänsten ska fungera. Om du godkänner marknadsföringscookies via vår cookiebanner läggs även Meta Pixels cookies (_fbp, _fbc) till. Väljer du "Endast nödvändiga" sätts inga marknadsföringscookies. Se tabellen nedan.',
   },
   {
     heading: '3. Tekniska cookies (Next.js)',
     body: 'Ramverket vi bygger med (Next.js) kan sätta kortlivade tekniska cookies för routning och sidnavigation. Dessa lagrar ingen personlig information och är inte spårningscookies.',
   },
   {
-    heading: '4. Tredjeparts-cookies',
-    body: 'DriverNord integrerar för närvarande inga tredjepartstjänster (Google Analytics, Facebook Pixel, etc.) som sätter egna cookies. Om detta förändras uppdateras denna policy och en samtyckesbanner läggs till.',
+    heading: '4. Tredjeparts-cookies — Meta Pixel',
+    body: 'DriverNord använder Meta Pixel (Meta Platforms Ireland Ltd) — ett marknadsföringsverktyg från Facebook/Instagram. Meta Pixel aktiveras bara om du godkänner marknadsföringscookies via vår cookiebanner. Väljer du "Endast nödvändiga" laddas Meta Pixel inte och inga marknadsföringscookies sätts. Ditt namn, telefonnummer eller e-postadress skickas aldrig till Meta.',
   },
   {
-    heading: '5. Hantera cookies',
-    body: 'Du kan när som helst rensa cookies i din webbläsares inställningar. Att rensa recruiter_session-cookien loggar ut dig från cockpit. Att rensa tekniska cookies påverkar inte din upplevelse som chaufför.',
+    heading: '5. Hantera dina cookieinställningar',
+    body: 'Du kan ändra dina cookieinställningar när som helst via länken "Hantera cookieinställningar" i sidfoten — utan att behöva rensa webbläsarhistoriken. Du kan också rensa cookies manuellt i din webbläsares inställningar. Att rensa recruiter_session-cookien loggar ut dig från cockpit.',
   },
   {
     heading: '6. Ändringar',
@@ -89,7 +113,7 @@ export default function CookiesPage() {
               </tbody>
             </table>
             <p className="text-xs text-gray-400 mt-2">
-              Ingen av DriverNords cookies används för spårning eller marknadsföring.
+              DriverNords egna cookies används aldrig för spårning. Marknadsföringscookies (_fbp, _fbc) sätts bara om du godkänner dem via cookiebannern.
             </p>
           </div>
 

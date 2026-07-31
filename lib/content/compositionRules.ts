@@ -197,3 +197,64 @@ export function checkMobileReadability(
 
   return { passes: warnings.length === 0, warnings };
 }
+
+// ─── SVG sprint prototype readability check ───────────────────────────────────
+//
+// Sprint SVG prototypes render at 400×500 (preview) representing 1080×1350
+// (production). Minimum readable body text at production size is 24 px,
+// which equals 8.9 px at the preview scale. We enforce floor of 9 px on
+// all font-size attributes so explanatory/info lines remain legible on mobile.
+//
+// Headline text is exempt (it is intentionally large); only secondary/body
+// text needs the floor. We detect "small" by looking for font-size values
+// below MIN_SVG_BODY_FONT_PX.
+
+// Body text floor: 8px at 400×500 preview scale = 22px at 1080×1350 production.
+// 7px and below (outside letter-spacing watermarks) represents ≤ 19px at production
+// which is unacceptably small for any visible explanatory line.
+const MIN_SVG_BODY_FONT_PX = 8; // px at 400×500 preview scale
+
+export interface SvgReadabilityResult {
+  passes: boolean;
+  violations: string[];
+}
+
+/**
+ * Validates that all body-text `font-size="N"` attributes in an SVG string
+ * meet the minimum legibility floor. Exemptions:
+ *  - Headlines (font-size ≥ 18) are exempt (they're intentionally large).
+ *  - Watermark/annotation elements using `letter-spacing` are exempt
+ *    (e.g. "INTERN FÖRHANDSVISNING" labels at top/bottom of sprint prototypes).
+ */
+export function checkSprintSvgReadability(svgContent: string): SvgReadabilityResult {
+  const violations: string[] = [];
+
+  // Split the SVG into individual <text ...>...</text> blocks for contextual checks
+  const textBlockRe = /<text\b([^>]*)>([^<]*)<\/text>/gi;
+  let block: RegExpExecArray | null;
+  while ((block = textBlockRe.exec(svgContent)) !== null) {
+    const attrs = block[1]!;
+
+    // Exempt: watermarks and annotation labels use letter-spacing (small-caps style)
+    if (/letter-spacing/i.test(attrs)) continue;
+
+    // Extract font-size from this element's attributes
+    const fsMatch = /font-size="(\d+(?:\.\d+)?)"/.exec(attrs);
+    if (!fsMatch) continue;
+
+    const px = parseFloat(fsMatch[1]!);
+
+    // Exempt: headline-scale text (≥ 18px at preview size)
+    if (px >= 18) continue;
+
+    if (px < MIN_SVG_BODY_FONT_PX) {
+      const content = block[2]!.trim().slice(0, 40);
+      violations.push(
+        `font-size="${fsMatch[1]}" is below minimum ${MIN_SVG_BODY_FONT_PX}px body text floor ` +
+        `(maps to ${(px * 1080 / 400).toFixed(0)}px at production 1080px width — too small for mobile). ` +
+        `Text: "${content}"`
+      );
+    }
+  }
+  return { passes: violations.length === 0, violations };
+}

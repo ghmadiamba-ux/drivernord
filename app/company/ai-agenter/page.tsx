@@ -1,6 +1,27 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PublicHeader } from '@/components/PublicHeader'
 import { LegalFooter } from '@/components/LegalFooter'
+
+export const metadata: Metadata = {
+  metadataBase: new URL('https://drivernord.com'),
+  title: 'AI-agenter för chaufförsmatchning — DriverNord',
+  description:
+    'Teknisk arkitektur bakom DriverNords automatiserade pipeline: fem AI-agenter klassificerar, shortlistar och loggar CE-förare i realtid — med mänsklig supervision via cockpit.',
+  openGraph: {
+    title: 'AI-agenter för chaufförsmatchning — DriverNord',
+    description: 'Fem autonoma agenter klassificerar och matchar CE-chaufförer i realtid. Koordinatorn behåller full kontroll via cockpit.',
+    url: 'https://drivernord.com/company/ai-agenter',
+    siteName: 'DriverNord',
+    locale: 'sv_SE',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'AI-agenter för chaufförsmatchning — DriverNord',
+    description: 'Fem autonoma agenter klassificerar och matchar CE-chaufförer i realtid. Koordinatorn behåller full kontroll via cockpit.',
+  },
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 

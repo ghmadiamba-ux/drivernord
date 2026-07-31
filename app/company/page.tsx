@@ -6,12 +6,12 @@ import { LegalFooter } from '@/components/LegalFooter';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://drivernord.com'),
-  title: 'DriverNord — Hitta kvalificerade chaufförer snabbare',
+  title: 'Hitta CE-chaufförer i Stockholm — DriverNord för transportföretag',
   description:
-    'DriverNord samlar in och kvalificerar chaufförsprofiler med körkort C/CE/D och YKB. Du får ett strukturerat underlag — redo för kontakt.',
+    'DriverNord kvalificerar CE-, C- och D-chaufförer med giltig YKB i Stockholm och Mälardalen. Transportföretag får ett strukturerat underlag och direktkontakt — utan bemanningsavgifter.',
   openGraph: {
-    title:       'DriverNord — Hitta kvalificerade chaufförer snabbare',
-    description: 'DriverNord samlar in och kvalificerar chaufförsprofiler med körkort C/CE/D och YKB. Du får ett strukturerat underlag — redo för kontakt.',
+    title:       'Hitta CE-chaufförer i Stockholm — DriverNord för transportföretag',
+    description: 'DriverNord kvalificerar CE-, C- och D-chaufförer med giltig YKB. Strukturerat underlag och direktkontakt — utan bemanningsavgifter.',
     url:         'https://drivernord.com/company',
     siteName:    'DriverNord',
     locale:      'sv_SE',
@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card:        'summary_large_image',
-    title:       'DriverNord — Hitta kvalificerade chaufförer snabbare',
-    description: 'DriverNord samlar in och kvalificerar chaufförsprofiler med körkort C/CE/D och YKB. Du får ett strukturerat underlag — redo för kontakt.',
+    title:       'Hitta CE-chaufförer i Stockholm — DriverNord för transportföretag',
+    description: 'DriverNord kvalificerar CE-, C- och D-chaufförer med giltig YKB. Strukturerat underlag och direktkontakt — utan bemanningsavgifter.',
   },
 };
 
@@ -352,12 +352,20 @@ function MidCTA() {
             Hör av dig så berättar vi mer om upplägg och kostnader.
           </p>
         </div>
-        <a
-          href="mailto:hej@drivernord.com"
-          className="flex-shrink-0 inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-6 py-3 rounded-lg transition-colors"
-        >
-          Skicka ett mail
-        </a>
+        <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
+          <a
+            href="mailto:hej@drivernord.com"
+            className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-6 py-3 rounded-lg transition-colors text-center"
+          >
+            Skicka ett mail
+          </a>
+          <a
+            href="tel:+46709385267"
+            className="inline-block bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 font-semibold text-sm px-6 py-3 rounded-lg transition-colors text-center"
+          >
+            070-938 52 67
+          </a>
+        </div>
       </div>
     </section>
   );
@@ -424,8 +432,11 @@ function FinalCTA() {
           inget CRM — bara ett samtal om vad ni behöver.
         </p>
         <PrimaryButton href="mailto:hej@drivernord.com" label="Skicka ett mail till hej@drivernord.com" />
-        <p className="mt-5 text-blue-500 text-xs">
-          Eller ring oss direkt. Vi är tillgängliga på vardagar.
+        <p className="mt-5 text-blue-400 text-sm">
+          Eller ring direkt:{' '}
+          <a href="tel:+46709385267" className="font-semibold text-white hover:text-blue-200 transition-colors">
+            070-938 52 67
+          </a>
         </p>
       </div>
     </section>
@@ -433,11 +444,27 @@ function FinalCTA() {
 }
 
 
+// ─── Structured data ──────────────────────────────────────────────────────────
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQ_ITEMS.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: item.a,
+    },
+  })),
+};
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CompanyPage() {
   return (
     <div className="min-h-screen flex flex-col">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <PublicHeader />
       <main className="flex-1">
         <Hero />

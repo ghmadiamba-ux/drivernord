@@ -91,7 +91,18 @@ export type ActionType =
   // Visual Production Pipeline V1 events
   | 'content_visual_plan_generated'
   | 'content_visual_plan_updated'
-  | 'content_visual_plan_held';
+  | 'content_visual_plan_held'
+  // Facebook Content Bridge V1 events
+  | 'content_facebook_card_queued'
+  | 'content_facebook_card_blocked'
+  | 'content_facebook_card_scheduled'
+  | 'content_facebook_card_due'
+  | 'content_facebook_post_published'
+  | 'content_facebook_post_failed'
+  | 'content_facebook_emergency_pause'
+  | 'content_facebook_category_paused'
+  | 'content_facebook_cap_hit'
+  | 'content_facebook_queue_plan_run';
 
 export type ActionStatus = 'pending' | 'approved' | 'completed' | 'failed' | 'cancelled' | 'needs_review';
 
@@ -108,13 +119,14 @@ export type TargetType =
   | 'logistikklubb_daily_notify'
   | 'agency_posting_signal'
   | 'content_campaign_card'
-  | 'content_weekly_plan';
+  | 'content_weekly_plan'
+  | 'content_facebook_queue_entry';
 
 export interface LogActionParams {
   action_type:  ActionType;
   triggered_by: string;
   target_type:  TargetType;
-  target_id:    string;
+  target_id:    string | null;
   status:       ActionStatus;
   input?:       Record<string, unknown>;
   result?:      Record<string, unknown>;

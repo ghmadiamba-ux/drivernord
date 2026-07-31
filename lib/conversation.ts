@@ -13,6 +13,8 @@ export type StepId =
   | 'phone'
   | 'email'
   | 'name'
+  | 'consent'
+  | 'bemanning_open'
   | 'confirmation'
   | 'disqualified';
 
@@ -36,6 +38,8 @@ const STEP_INDEX: Record<StepId, number> = {
   phone:            6,
   email:            6,
   name:             6,
+  consent:          7,
+  bemanning_open:   7,
   confirmation:     7,
   disqualified:    -1,
 };
@@ -57,9 +61,11 @@ export function getNextStep(current: StepId, ctx: StepContext): StepId | null {
     case 'shift_preference': return 'phone';
     case 'phone':        return 'email';
     case 'email':        return 'name';
-    case 'name':         return 'confirmation';
-    case 'confirmation': return null;
-    case 'disqualified': return null;
+    case 'name':         return 'consent';
+    case 'consent':        return 'bemanning_open';
+    case 'bemanning_open': return 'confirmation';
+    case 'confirmation':   return null;
+    case 'disqualified':   return null;
   }
 }
 

@@ -27,6 +27,18 @@ export function createLead(lang: Lang): Lead {
     follow_up_sent: false,
     follow_up_at: null,
     follow_up_reason: null,
+    consent_registration_at: null,
+    consent_registration_version: null,
+    consent_scope: null,
+    open_to_bemanning: null,
+    bemanning_consent_at: null,
+    utm_source: null,
+    utm_medium: null,
+    utm_campaign: null,
+    utm_content: null,
+    utm_term: null,
+    landing_page_url: null,
+    referrer_url: null,
   };
   store.set(lead.id, lead);
   return lead;

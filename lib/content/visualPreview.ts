@@ -27,6 +27,26 @@ export function generateVisualPreview(
   campaignCardId: string,
   plan: VisualProductionPlan,
 ): VisualPreviewSpec {
+  // Sprint V1: if a polished execution prototype is stored, use it directly
+  if (plan.sprint_execution?.prototype?.svg_content) {
+    const sp = plan.sprint_execution;
+    return {
+      campaign_card_id:    campaignCardId,
+      visual_plan_id:      plan.id,
+      is_internal_only:    true,
+      preview_type:        'branded_graphic_svg',
+      svg_content:         sp.prototype.svg_content,
+      concept_description: sp.brief.central_visual_idea,
+      composition_notes:   sp.prototype.composition_notes,
+      copy_hierarchy:
+        `"${sp.on_image_copy.headline}"` +
+        (sp.on_image_copy.support_line ? ` / "${sp.on_image_copy.support_line}"` : ''),
+      format_notes:
+        '400x500 sprint prototype — representerar 1080x1350 mobilformat (portrait 4:5).',
+      disclaimer: sp.prototype.disclaimer,
+    };
+  }
+
   if (plan.asset_strategy === 'no_visual_needed') {
     return noVisualSpec(campaignCardId, plan.id);
   }

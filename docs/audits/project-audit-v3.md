@@ -1,3 +1,5 @@
+> **SUPERSEDED** — Historical record only. See `docs/business/project-audit/end-to-end-structure-audit/` for the current audit (2026-05-16).
+
 # DriverNord — Project Audit v3
 
 *Date: 2026-05-10*

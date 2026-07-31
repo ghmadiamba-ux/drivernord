@@ -40,24 +40,27 @@ export function TextInputStep({
         autoFocus
         autoComplete={inputMode === 'tel' ? 'tel' : inputMode === 'email' ? 'email' : 'given-name'}
         className="
-          w-full min-h-[56px] px-4 py-3
+          w-full min-h-[54px] px-4 py-3
           text-base text-gray-900 bg-white
           border border-gray-200 rounded-xl
-          focus:outline-none focus:border-blue-400
+          focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100
           disabled:opacity-40
-          placeholder:text-gray-400
+          placeholder:text-gray-350
+          transition-shadow duration-150
         "
       />
       <button
         onClick={handleSubmit}
         disabled={disabled || !value.trim()}
         className="
-          w-full min-h-[56px] px-4 py-3
+          w-full min-h-[54px] px-4 py-3
           text-base font-semibold text-white
-          bg-blue-500 rounded-xl
-          active:bg-blue-600
-          disabled:opacity-40 disabled:cursor-not-allowed
-          transition-colors duration-100
+          bg-blue-600 rounded-xl
+          hover:bg-blue-700
+          active:bg-blue-800 active:scale-[0.99]
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1
+          disabled:opacity-35 disabled:cursor-not-allowed
+          transition-all duration-150
         "
       >
         {submitLabel}
@@ -67,11 +70,12 @@ export function TextInputStep({
           onClick={onSkip}
           disabled={disabled}
           className="
-            w-full min-h-[44px] px-4 py-2
+            w-full min-h-[40px] px-4 py-2
             text-sm text-gray-400
-            active:text-gray-600
+            hover:text-gray-600
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-1
             disabled:opacity-40
-            transition-colors duration-100
+            transition-colors duration-150
           "
         >
           {skipLabel}

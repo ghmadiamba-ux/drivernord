@@ -164,6 +164,11 @@ export type VisualFeedbackSignal =
   | 'avoid_this_scene_type'           // Avoid this specific scene
   | 'reuse_this_visual_direction'     // Strong direction worth repeating
   | 'future_campaign_candidate'       // Elevate to campaign-quality when resources allow
+  // ─ Sprint V1 execution quality signals ─────────────────────────────────────
+  | 'good_trust_building_direction'   // Correct tone for trust/organic channel
+  | 'too_aggressive_for_organic'      // Hook too hard for organic feed — use paid channel
+  | 'good_paid_ad_direction'          // Strong performance visual; move to paid acquisition
+  | 'keep_this_hook_type'             // This hook type resonates; use in future content
   // ─ Reference learning signals (proven mechanism feedback) ──────────────────
   | 'mechanism_selection_correct'     // Correct mechanism chosen for this content
   | 'mechanism_selection_wrong'       // Wrong mechanism — doesn't fit content
@@ -231,6 +236,9 @@ export interface VisualProductionPlan {
   generated_by: string;
   created_at: string;  // ISO datetime
   updated_at: string;
+
+  // Sprint V1 execution package (stored in visual_plan JSONB alongside the plan)
+  sprint_execution?: SprintExecutionPackage;
 }
 
 // ─── Visual memory (for anti-repetition) ─────────────────────────────────────
@@ -290,4 +298,81 @@ export interface VisualPreviewSpec {
   copy_hierarchy: string;
   format_notes: string;
   disclaimer: string;
+}
+
+// ─── Visual Execution Sprint V1 ───────────────────────────────────────────────
+// Stored as sprint_execution inside the visual_plan JSONB.
+// No DB migration — lives within the existing visual_plan column.
+
+export interface SprintExecutionBrief {
+  target_audience: string;
+  objective: string;
+  central_visual_idea: string;
+  mobile_scroll_stop_intention: string;
+  format_justification: string;
+  emotional_tone: string;
+}
+
+export interface SprintOnImageCopy {
+  headline: string;
+  support_line?: string;
+  cta_line?: string;
+  word_count: number;
+}
+
+export type SprintPrototypeType =
+  | 'svg_branded_graphic'           // Mon, Sun
+  | 'real_asset_layout_mock'        // Wed
+  | 'ai_direction_composition_mock'; // Fri
+
+export interface SprintExecutionBoard {
+  photo_criteria: string;
+  crop_direction: string;
+  text_overlay_placement: string;
+  color_contrast_direction: string;
+  swedish_environment_requirements: string;
+  do_not_use: string[];
+}
+
+export interface SprintAiDirectionPackage {
+  scene: string;
+  subject: string;
+  wardrobe: string;
+  environment: string;
+  swedish_transport_realism: string;
+  composition: string;
+  camera_framing: string;
+  lighting: string;
+  negative_constraints: string[];
+  on_image_copy_placement: string;
+}
+
+export interface SprintPrototype {
+  type: SprintPrototypeType;
+  svg_content: string;                       // polished SVG for all three prototype types
+  execution_board?: SprintExecutionBoard;    // real_asset extra data
+  ai_direction?: SprintAiDirectionPackage;   // future_ai_generated extra data
+  composition_notes: string;
+  disclaimer: string;
+}
+
+export interface SprintQualityReview {
+  mobile_readability: string;
+  on_image_word_count: number;
+  visual_family_cooldown: string;
+  scene_repetition: string;
+  composition_repetition: string;
+  mechanism_cooldown: string;
+  gate_outcome: string;
+  founder_review_question: string;
+}
+
+export interface SprintExecutionPackage {
+  version: 'v1';
+  day_label: string;
+  brief: SprintExecutionBrief;
+  on_image_copy: SprintOnImageCopy;
+  prototype: SprintPrototype;
+  quality_review: SprintQualityReview;
+  applied_at: string;
 }

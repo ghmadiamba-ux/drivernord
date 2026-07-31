@@ -70,6 +70,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const iso_week = body.week!;
   const created_by = body.created_by ?? 'admin';
 
+  // Duplicate guard: refuse if cards already exist for this week
+  const { count: existingCount, error: countError } = await db
+    .from('content_campaign_cards')
+    .select('id', { count: 'exact', head: true })
+    .eq('planned_week', iso_week);
+
+  if (!countError && existingCount && existingCount > 0) {
+    return NextResponse.json(
+      {
+        error: `Vecka ${iso_week} har redan ${existingCount} kort. Radera dem manuellt via Supabase om du vill regenerera.`,
+        existing_count: existingCount,
+      },
+      { status: 409 },
+    );
+  }
+
   const history = await loadHistory();
   const { plan, errors } = generateWeeklyPlan({ iso_week, history, created_by });
   const summary = summarizePlan(plan);
@@ -181,7 +197,27 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ week, cards: data ?? [] });
+  const cards = (data ?? []).map((row) => ({
+    id:               row.id as string,
+    label:            `${dayLabel(row.planned_day_of_week as number | undefined)} — ${row.content_pillar}/${row.creative_angle}`,
+    content_pillar:   row.content_pillar as string,
+    creative_angle:   row.creative_angle as string,
+    target_audience:  (row.target_audience ?? '') as string,
+    format:           (row.format ?? 'text_post') as string,
+    cta_type:         (row.cta_type ?? 'none') as string,
+    risk_level:       (row.risk_level ?? 'low') as string,
+    lifecycle_status: (row.lifecycle_status ?? 'draft') as string,
+    blocked_reason:   (row.blocked_reason ?? undefined) as string | undefined,
+    draft_text:       (row.draft_text ?? undefined) as string | undefined,
+    hashtag_set:      (row.hashtag_set ?? undefined) as string[] | undefined,
+    planned_day:      row.planned_day_of_week as number | undefined,
+    planned_week:     (row.planned_week ?? undefined) as string | undefined,
+    suggested_slot_time: (row.suggested_slot_time ?? undefined) as string | undefined,
+    created_by:       (row.created_by ?? undefined) as string | undefined,
+    created_at:       (row.created_at ?? undefined) as string | undefined,
+  }));
+
+  return NextResponse.json({ week, cards });
 }
 
 // ─── PATCH — update card lifecycle status ────────────────────────────────────

@@ -24,6 +24,8 @@ import { buildVisualMemoryEntry } from '@/lib/content/visualMemory';
 import { selectProvenMechanism } from '@/lib/content/provenReferences';
 import { selectCreativeMode, checkMechanismCooldown } from '@/lib/content/creativeMechanism';
 
+import { isRegulatoryHold } from '@/lib/content/regulatoryContentDetector';
+
 import type { VisualProductionPlan, VisualMemoryEntry, VisualFeedbackSignal } from '@/lib/content/visualTypes';
 import type { ContentPillar, CreativeAngle, PostFormat, RiskLevel } from '@/lib/content/types';
 
@@ -51,6 +53,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: cardErr?.message ?? 'Card not found' },
         { status: 404 },
+      );
+    }
+
+    // 1b. Regulatory hold gate — never generate a polished visual prototype for
+    //     cards held pending official-source grounding.
+    if (isRegulatoryHold(card.blocked_reason as string | null)) {
+      return NextResponse.json(
+        {
+          error: 'REGULATORY_HOLD',
+          message:
+            'Visual prototype generation is blocked: this card contains specific ' +
+            'regulatory claims (driving time, rest rules, tachograph) and must be ' +
+            'linked to an approved official source before a publishable visual is created.',
+        },
+        { status: 422 },
       );
     }
 

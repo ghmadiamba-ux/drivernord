@@ -1,317 +1,290 @@
 # DriverNord — Roadmap: Next Phases
 
-*Last updated: 2026-05-10 (Phase 1 sub-items 1.2–1.5 completed; B2B research phase active)*
+*Last updated: 2026-05-14 (full reorder based on project audit + monetization strategy + market reality research)*
+
+> **Doctrine update 2026-06-16:** Several sections of this roadmap have been superseded by the current strategic doctrine. Specifically: (1) "Lager/warehouse/forklift — not in target market" is superseded — all logistics worker categories are now in scope. (2) "No bemanning, no subscription, no success fee until shortlist model validated" is partially superseded — bemanning is now a planned commercial path with its own transition plan. (3) The "9+, 24–36 months, capital required" bemanning phase estimate is superseded. The operative doctrine document is `docs/business/strategy/current-driverNord-doctrine.md`. This roadmap is preserved as historical context.
 
 ---
 
-## Guiding Principles
+## Governing Principles
 
-1. **Do not expand scope prematurely.** The next phases address what is needed to run a real pilot with real companies and real drivers. No warehouse/lager/bus expansion until the core transport segment is validated.
-2. **Pipeline automation is built; contact delivery is the last missing link.** The priority is getting real messages to real drivers, not adding more features.
-3. **Pilot readiness before scale.** Each phase below should unlock a specific capability needed before moving to the next.
+1. **AI-driven end to end.** Every phase must specify what AI does, what humans do, and what tools execute. Never design a phase as "go do X manually."
+2. **Sequence matters.** Workers must exist before clients are approached. Legal must be in place before profiles are shared. Operational readiness before commercial activity.
+3. ~~**Do not expand scope prematurely.** No bemanning, no subscription, no success fee until the shortlist model is validated with 3 successful introductions.~~ *Superseded 2026-06-16: scope expands when market evidence supports it, not only after internal milestones.*
+4. **Speed window.** Förartjänst.se is rebuilding in 2026. The competitive window for establishing market presence is this year.
 
 ---
 
 ## Current Readiness Assessment
 
-| Capability | Ready? |
-|-----------|--------|
-| Driver self-registration | YES |
-| Automated classification + ingestion | YES |
-| Automated matching (on driver or need creation) | YES |
-| Shortlist creation | YES |
-| Human approval cockpit | YES |
-| Messaging provider abstraction | YES — `lib/messaging/` built and tested |
-| Actual contact delivery to drivers | PARTIAL — infrastructure ready, needs `SMS_PROVIDER` + credentials configured |
-| Cockpit approval → real send | YES — approval now calls provider, not just marks contacted |
-| Database migrations in version control | YES — `migrations/001`–`007` committed |
-| PII routes protected (leads, score) | YES — `requireRecruiterAuth` on all three endpoints |
-| Test suite clean | YES — 556/556 pass (recruiterAuth mock updated) |
-| OG metadata base URL | YES — `metadataBase: new URL('https://drivernord.com')` set in `app/layout.tsx` |
-| Human visuals deployed | YES — `public/images/` (about, company hero, company trust, driver hero) |
-| Company need self-service intake | NO — recruiter-only via API |
-| Real company engagement | NOT YET — email-only (`hej@drivernord.com`) |
-| Pilot with first company | BLOCKED by SMS_PROVIDER credentials only |
+| Capability | Ready? | Blocker |
+|-----------|--------|---------|
+| Driver self-registration (/chat) | YES | — |
+| Automated classification + ingestion | YES | — |
+| Automated matching (buildShortlist) | YES | — |
+| Shortlist creation | YES | — |
+| Human approval cockpit | YES | — |
+| Messaging provider abstraction | YES — infrastructure built | SMS_PROVIDER not configured |
+| **Real contact delivery to drivers** | **NO** | 46elks credentials not configured |
+| **Driver database (supply side)** | **EMPTY** | No driver acquisition campaign run |
+| **Legal: Privacy policy** | **PRELIMINARY** | No GDPR Art. 6 basis stated; lawyer review needed |
+| **Legal: DPA template** | **DOES NOT EXIST** | Required before any profile sharing |
+| **Legal: Service agreement** | **DOES NOT EXIST** | Required before any commercial invoice |
+| **hej@drivernord.se** | **UNCONFIRMED** | Monitoring status not verified |
+| Invoicing tool | **NOT CONFIGURED** | Fortnox or equivalent needed |
+| Company self-service intake | NO | Phase 3 item |
 
 ---
 
-## Phase 1 — Pilot Readiness (Blocking)
+## Phase 0 — Immediate Founder Actions (Hours, Not Days)
 
-**Goal:** Be able to run a real pilot with at least one transport company. A driver fills `/chat`, is matched, and actually receives a message.
+**Goal:** Close the three cheapest blockers that are blocking everything downstream.
 
-### 1.1 Real contact delivery — SMS or WhatsApp
+These are not AI tasks — they require human action.
 
-**Status: INFRASTRUCTURE COMPLETE. Credential configuration remaining.**
+| Action | Effort | Who | Unblocks |
+|--------|--------|-----|---------|
+| Configure 46elks SMS credentials in environment | 30 minutes | Founder | All real driver contact; urgent package delivery |
+| Verify hej@drivernord.se inbox is active and monitored | 10 minutes | Founder | GDPR compliance; inbound commercial inquiries |
+| Decide driver acquisition budget (0 / 5,000 / 15,000 SEK/month) | Decision | Founder | Phase 1 can begin |
 
-The messaging abstraction (`lib/messaging/`) is built and tested. The provider is selected at runtime via `SMS_PROVIDER`. 46elks (Swedish provider) is implemented. To activate real sends:
-
-1. Sign up for a 46elks account (or another provider — extend `lib/messaging/smsProvider.ts`)
-2. Set in `.env.local` (and Vercel environment):
-   ```
-   SMS_PROVIDER=46elks
-   SMS_API_KEY=<your 46elks API username>
-   SMS_API_SECRET=<your 46elks API password>
-   SMS_FROM_NUMBER=<registered number or alphanumeric sender>
-   ```
-3. Deploy. Existing `console.log` simulated mode becomes real SMS.
-
-No code changes required. The cockpit approval flow already triggers real sends via the provider.
-
-**WhatsApp:** Not yet implemented. The `MessageChannel` type includes `'whatsapp'` as a reserved value. Add a new provider branch in `lib/messaging/smsProvider.ts` when ready.
-
-**Effort remaining:** 30 minutes (provider account + env var configuration)
-**Effort already done:** Provider abstraction, 46elks integration, approval-sends flow, failure handling, 16 new tests
-
-### ~~1.2 Fix recruiterAuth test suite~~ — DONE
-
-**What:** ~~Update `tests/recruiterAuth.test.ts` — add `cookies: { get: vi.fn().mockReturnValue(undefined) }` to mock objects. 4-line fix. Unblocks clean `npm test`.~~
-
-**Status:** Completed. `cookies: { get: () => undefined }` added to mock. All tests pass.
-
-### ~~1.3 Commit database migration files~~ — DONE
-
-**Status:** Completed. `migrations/` directory exists with all 7 idempotent files:
-- `001_create_drivers.sql`
-- `002_add_domain_shift_preference_to_drivers.sql`
-- `003_create_companies_and_company_needs.sql`
-- `004_create_ingested_drivers.sql`
-- `005_create_shortlists.sql`
-- `006_add_contact_workflow_to_shortlist_entries.sql`
-- `007_create_system_actions.sql`
-
-All verified column-by-column against store files and types. See `docs/current/database-schema.md` for full schema reference.
-
-### ~~1.4 Set metadataBase in root layout~~ — DONE
-
-**Status:** Completed. `metadataBase: new URL('https://drivernord.com')` confirmed in `app/layout.tsx:5`. OG image URLs now resolve correctly for all pages.
-
-### ~~1.5 Add auth to PII-exposing endpoints~~ — DONE
-
-**Status:** Completed. `requireRecruiterAuth` verified in all three handlers:
-- `GET /api/leads/[id]` — protected (`app/api/leads/[id]/route.ts:52`)
-- `GET /api/leads/[id]/score` — protected (`app/api/leads/[id]/score/route.ts:49`)
-- `POST /api/leads/[id]/score` — protected (`app/api/leads/[id]/score/route.ts:62`)
+**Do these before anything else. Total time: ~40 minutes.**
 
 ---
 
-## Phase 1.5 — B2B Research and Barrier-to-Entry Assessment (ACTIVE)
+## Phase 1 — Legal and Compliance Foundation (Weeks 1–4, Parallel)
 
-**Goal:** Identify realistic Swedish transport/logistics pilot targets and understand barriers to entry before building any company intake form. This phase is research-only — no code.
+**Goal:** Have all legal documents reviewed and in place before any driver profile is shared with a client company.
 
-**Why before Phase 2:** Building a company intake form before understanding how target companies actually engage with vendors risks building the wrong entry point (wrong form fields, wrong trust signals, wrong contact flow).
+All three documents are legally required before the first commercial transaction. They can be worked on in parallel with Phase 2 (driver acquisition).
 
-**Core research principle:** Do not only look for companies with driver needs. Look for companies with:
-- visible driver need
-- **+** low barrier to entry
-- **+** accessible decision-maker
-- **+** realistic pilot feasibility
+### 1.1 Commission legal review of privacy policy
 
-### Target segments (priority order)
+**What:** Engage a Swedish GDPR lawyer to review the current preliminary privacy policy.
+**Required additions:** Explicit Art. 6(1)(a) consent basis for matching processing; retention periods; third-party data sharing disclosure.
+**AI-executable:** Claude Code can prepare a pre-review draft with all flagged sections and legal citations. Human lawyer reviews and approves.
+**Output:** Reviewed privacy policy; remove "Preliminär version" banner.
+**Estimated time:** 2–4 weeks (external lawyer dependency).
 
-1. **Swedish transport SMEs and regional operators** — companies with 5–50 trucks, recurring C/CE hiring needs, owner or transport manager as decision-maker. No procurement panel. Stockholm region first.
-2. **Transport-specialist staffing agencies** — Rekryteringsgruppen, Simplex Bemanning, Submit AB — as potential supplier clients. DriverNord supplies pre-qualified driver profiles; agency places them. Bypasses employer-direct complexity.
-3. **Regional logistics operators** with visible driver ads on Arbetsförmedlingen or Blocket Jobb.
+### 1.2 Draft and commission DPA template
 
-### Large accounts — benchmarks only, not immediate targets
+**What:** A Data Processing Agreement (or Controller-to-Controller Agreement under GDPR Art. 26) governing the sharing of driver personal data with client companies when a shortlist is delivered.
+**Why critical:** Sharing a driver's profile with a company without a signed DPA is a GDPR compliance violation. Every shortlist delivery requires a signed DPA.
+**AI-executable:** Claude Code drafts the template (citing GDPR Art. 26, Swedish DPA precedent). Human lawyer reviews.
+**Recommended AI next task:** Draft this document as `docs/business/legal/dpa-template-v1.md`.
+**Output:** DPA template ready to send to first client.
 
-PostNord, DHL, Bring, DB Schenker and similar groups have multi-month supplier approval processes, procurement systems, HR vendor panels, GDPR/insurance requirements. Research their processes as benchmarks and long-term strategic accounts. Do not approach as pilot candidates.
+### 1.3 Draft service agreement template
 
-### Barrier dimensions to assess per company
+**What:** A one-page commercial service agreement covering: what DriverNord delivers, the fee trigger (on shortlist delivery), payment terms (30 days), limitation of liability.
+**AI-executable:** Claude Code drafts the template. Human lawyer reviews.
+**Output:** Service agreement template ready to send to first client.
 
-| Dimension | What to check |
-|-----------|---------------|
-| Procurement / supplier approval | Is there a formal vendor approval process? How long? |
-| Existing staffing contracts | Do they have an exclusivity clause with a bemanning company? |
-| GDPR / data processor agreement | Do they require a DPA before sharing driver data? |
-| Insurance / liability | Does the non-employer model require explicit clarification? |
-| Decision-maker accessibility | Owner / transport manager vs. HR vs. procurement department |
-| Current driver urgency | Are they actively advertising for C/CE drivers right now? |
+### 1.4 Add GDPR deletion mechanism (engineering)
 
-### Output of this phase
-
-A ranked shortlist of 5–10 pilot candidates with:
-- company name, segment, size
-- current hiring signal (where seen)
-- estimated barrier-to-entry level (low / medium / high)
-- identified or inferred decision-maker role
-- recommended first contact approach
-
-This shortlist informs Phase 2 form design and B2B outreach strategy.
+**What:** `DELETE /api/recruiter/drivers/{id}` — cascade delete from `drivers`, `ingested_drivers`, `shortlist_entries`; anonymize `system_actions` audit log entries.
+**AI-executable:** Yes — Claude Code can write the spec and implement.
+**Effort:** 1–2 days engineering.
+**Status:** Not started.
 
 ---
 
-## Phase 2 — Real Company Need Capture
+## Phase 2 — Driver Acquisition Campaign (Weeks 1–8, Priority)
 
-**Goal:** Transport companies can express hiring needs without recruiter mediation.
+**Goal:** Reach ≥ 20 registered, scored drivers (≥ 3 per relevant category/region). This is the supply-side prerequisite for the commercial product.
 
-**Why this matters:** Currently, all company needs must be created by the recruiter via a direct API call. This creates a bottleneck — companies cannot self-register interest, and the recruiter must handle all intake manually. This is incompatible with the autonomous infrastructure vision.
+**This is the most time-sensitive gap. Without drivers, there is no product.**
 
-### 2.1 Company need intake form
+### 2.1 AI-driven driver acquisition plan
 
-**What:** A web form at `/company/kontakt` or `/company/behov` where a transport company representative can submit a hiring need.
+**What:** A 30-day campaign plan specifying: channel selection (Meta Ads, Arbetsförmedlingen, Platsbanken, Facebook groups for CE drivers), targeting parameters, ad copy variants (A/B test), consent language, expected conversion rates based on market data.
+**AI-executable:** YES — Claude Code can produce this entirely.
+**Recommended AI next task:** Draft `docs/business/driver-acquisition-plan.md`.
+**Output:** A founder-ready acquisition plan that can be launched immediately after approval.
 
-Fields to collect:
-- Company name (text)
-- Contact name + email
-- License required (C / CE / D — select)
-- Domain required (select from domain taxonomy)
-- Region preference (Stockholm / other)
-- Relocation tolerance (yes/no)
-- Shift type (day / night / both)
-- Urgency (standard / emergency)
-- Additional notes (optional)
+### 2.2 Meta Ads campaign (founder launch)
 
-**Backend:** The form POSTs to `POST /api/company-needs` (already has auth + matching trigger). Either:
-a. Add a separate unauthenticated route for company-submitted needs (with email notification to recruiter)
-b. Keep `POST /api/company-needs` recruiter-protected and use a separate unprotected `POST /api/company-leads` that sends an email and logs the inquiry without creating a need directly
+**What:** Launch targeted Meta (Facebook/Instagram) ads targeting CE+YKB drivers in Stockholm region. Campaign designed in Phase 2.1.
+**AI-executable:** Planning and copy: YES. Actual ad account launch: NO (requires founder account).
+**Trigger:** Launch after Phase 2.1 plan is approved and 46elks is configured.
+**Budget:** 5,000–15,000 SEK/month depending on founder decision.
 
-**Recommended:** Option b — log the inquiry, notify recruiter via email, recruiter creates the official need via API after vetting. Keeps the automated pipeline gated by human validation of company intent.
+### 2.3 Multi-channel supplementation (AI-monitored)
 
-**Effort:** 2–3 days
+**Channels to activate after Meta Ads:**
+- Arbetsförmedlingen (free; post role descriptions targeting CE drivers)
+- Platsbanken (free; reach drivers who search job boards)
+- Facebook groups for Swedish CE drivers (organic post with /chaufforer link)
+- YKB training school partnerships (contact schools that train CE drivers)
+- Driver referral incentive (existing drivers refer others)
 
-### 2.2 Add company_name to getOpenCompanyNeeds()
+**AI-executable:** Claude Code can draft all copy, targeting specs, and channel-specific content.
 
-**What:** Update `lib/companyNeedStore.ts` `getOpenCompanyNeeds()` to JOIN the `companies` table and return `company_name`.
+### 2.4 Driver database quality monitoring (AI)
 
-**Why:** The cockpit shows `company_need_id` UUIDs but no human-readable company name. Operators must cross-reference separately.
-
-**Effort:** 30 minutes
-
----
-
-## Phase 3 — Observability and Operational Safety
-
-**Goal:** Make the system safe and understandable to operate without deep technical knowledge.
-
-### 3.1 Add rate limiting to POST /api/leads
-
-**What:** Implement IP-based rate limiting before the driver intake endpoint.
-
-Options:
-- Vercel middleware with in-memory rate limiting (simple, not persistent across instances)
-- Upstash Redis + `@upstash/ratelimit` (recommended for production)
-- Limit: e.g., 5 leads per IP per hour
-
-**Why:** Before any public Meta campaigns, the intake endpoint needs protection against bot submissions that would pollute the driver pool.
-
-**Effort:** 1 day
-
-### 3.2 Add match cooldown guard
-
-**What:** Add a cooldown check in `runMatchingAgent` — if a shortlist was created for this `needId` within the last N minutes, skip the run.
-
-**Where:** `lib/matchingAgent.ts` — after validating the needId, check `shortlists WHERE company_need_id = needId AND created_at > now() - interval 'MATCH_COOLDOWN_MINUTES'`.
-
-**Why:** Multiple drivers completing `/chat` in quick succession all trigger matching for all open needs. This creates many shortlists for the same need, each with slightly different candidate pools.
-
-**Effort:** 2 hours
-
-### 3.3 Ingest failure logging
-
-**What:** When `ingestLead()` fails in `PATCH /api/leads/[id]`, log a `driver_ingested` action with `status: 'failed'` to `system_actions`.
-
-**Where:** `app/api/leads/[id]/route.ts` — in the `if (!ingestResult.ok)` block.
-
-**Why:** Currently ingestion failures are invisible to the cockpit operator. A driver may complete `/chat` and show as classified but never appear in the matching pool, with no explanation.
-
-**Effort:** 30 minutes
-
-### 3.4 Add "Run Match" button to cockpit
-
-**What:** Add a button in `/recruiter` that allows the operator to manually trigger a match run for a specific company need without using curl or the API directly.
-
-**How:** Add a simple UI section showing open company needs (from `GET /api/company-needs`); each need has a "Run Match" button that POSTs to `POST /api/recruiter/match` with the `need_id`.
-
-**Effort:** 1 day
-
-### 3.5 Shortlist browse in cockpit
-
-**What:** Add a shortlist list view to the cockpit — allows operator to see all past shortlists and click into entries without knowing a UUID.
-
-**Backend:** `GET /api/recruiter/shortlists` (currently only `GET /api/recruiter/shortlists/[id]` exists)
-
-**Effort:** 1 day (backend + UI)
+**What:** Weekly review of registration data — track: total registered, score distribution, license breakdown, YKB status, availability distribution, region breakdown.
+**AI-executable:** YES — Claude Code can query the local Supabase instance and generate a quality report.
+**Output:** Weekly driver database quality report to founder.
 
 ---
 
-## Phase 4 — Legal Completeness
+## Phase 3 — First Commercial Transaction (Weeks 8–12, After ≥ 5 Available Drivers)
 
-**Goal:** Remove "Preliminär version" banners from all legal pages and operate with reviewed, final policy content.
+**Goal:** Execute the first Package 4 (Akut Förarsökning) introduction to a client company. Generate first revenue.
 
-### 4.1 Legal review of privacy policy, terms, cookies
+**Prerequisite gates (all must be true before any commercial conversation):**
+- [ ] ≥ 5 drivers confirmed available in database (for Package 4)
+- [ ] 46elks SMS configured and tested
+- [ ] hej@drivernord.se confirmed active
+- [ ] DPA template reviewed by lawyer
+- [ ] Service agreement template reviewed by lawyer
+- [ ] Invoicing tool configured (Fortnox)
+- [ ] Pre-delivery availability confirmation process in place
 
-**What:** Have a Swedish legal professional review `/privacy`, `/terms`, `/cookies`.
+### 3.1 First client approach
 
-Key issues to address:
-- Explicit legal basis for data processing (legitimate interest or consent)
-- Retention periods — add specific durations
-- Cross-border data transfer statement (if applicable — Supabase EU region)
-- SMS/WhatsApp section in privacy policy: update when real provider is integrated
+**Candidates (from top-10-notes.md):** Canoil Sverige AB, Transportfirma Trabé, Edvardssons Last, JPC Entreprenad, Enskede Bilexpress.
+**Package:** Package 4 (Akut Förarsökning) at 8,000 SEK — lowest friction, clearest value.
+**Process:** Approach after availability of shortlist is confirmed. Do not approach before drivers exist.
+**AI-executable:** Claude Code can prepare all outreach material, talking points, product sheet, and pricing comparison. Human makes the contact.
 
-**After review:** Remove "Preliminär version" amber banner from each page.
+### 3.2 AI-prepared commercial materials
 
-**Effort:** External — depends on legal resource
+**What Claude Code prepares before the first client conversation:**
+- Product one-pager (Package 2 + Package 4) in Swedish
+- Pricing comparison sheet (DriverNord vs. agency vs. job board)
+- ROI calculator (staffing conversion: 15,000 SEK vs. 350,000 SEK annual saving)
+- Draft service agreement and DPA cover letter
+- Personalized brief for each of the top-5 pilot companies
 
-### 4.2 Add data deletion mechanism
+### 3.3 Invoicing
 
-**What:** A recruiter-accessible endpoint or cockpit action to delete a driver's data on GDPR request.
-
-Minimum: `DELETE /api/recruiter/drivers/[id]` that deletes from `drivers` and `ingested_drivers`, marks or removes `shortlist_entries`.
-
-**Effort:** 1 day
+**What:** Issue a VAT-correct invoice on delivery of the shortlist (not on hire).
+**Tool required:** Fortnox or equivalent — must be configured before the first invoice.
+**AI-executable:** Invoice design and template preparation: YES. Account setup: NO (founder).
 
 ---
 
-## Phase 5 — Scale Preparation
+## Phase 4 — Package 2 Scale (Weeks 10–16, After ≥ 15 Available Drivers)
 
-**Goal:** The system can handle meaningful driver and company volumes without degrading.
+**Goal:** Transition from urgent Package 4 introductions to the full shortlist Package 2 product.
 
-### 5.1 Paginate recent actions in cockpit
+**Prerequisite:** ≥ 15 drivers confirmed available across relevant categories.
 
-**What:** `recentActions` is currently capped at 50 records. Add pagination to `GET /api/cockpit/actions` and to the cockpit UI.
+### 4.1 Verifierad Förarlista (Package 2) delivery
 
-**Effort:** 1 day
+**First 3 sales at 15,000 SEK.** After 3 successful sales:
+- Raise price to 17,000 SEK
+- Test 18,000 SEK after 5+ successful sales
+- Observe negotiation patterns per price testing rule (founder-decision-brief.md)
 
-### 5.2 Add driver pool browse to cockpit
+### 4.2 Client reference building
 
-**What:** A view in the cockpit showing all ingested drivers with their score, status, and last activity. Allows recruiter to understand pool composition.
+**What:** After each successful introduction, request permission to display company name/logo or obtain a brief testimonial.
+**First reference = significant trust multiplier for all subsequent sales.**
 
-**Effort:** 2 days
+### 4.3 Guarantee policy (must be designed before Package 2 is offered)
 
-### 5.3 Index critical query columns
+**What:** Define the replacement guarantee: "If a driver in the shortlist is unavailable within 24 hours of delivery, DriverNord will replace that driver within 5 business days at no additional charge."
+**AI-executable:** Policy design: YES. Must be documented before first Package 2 offer.
 
-**What:** Ensure Supabase has indexes on:
-- `system_actions(status)` — for cockpit pending/failed queries
-- `system_actions(created_at)` — for time-range queries
-- `drivers(follow_up_at, follow_up_sent)` — for cron query
-- `shortlist_entries(driver_id, contacted_at)` — for dedup checks
+---
 
-**Effort:** 1 hour (SQL migration)
+## Phase 5 — Success Fee Introduction (After 3 Successful Package 2 Sales)
 
-### 5.4 Evaluate multi-region expansion
+**Goal:** Offer Package 3 (success fee on hire) to clients who have already experienced a successful shortlist.
 
-**When:** Only after Stockholm pilot validates the model. Next geography would be Göteborg or Malmö — not lager/warehouse segment.
+**Price:** 35,000–45,000 SEK on confirmed hire.
+**Required:** Service agreement with clear fee trigger clause. Legal review of trigger mechanism. 3+ client references demonstrating product quality.
+**AI role:** Draft updated service agreement; prepare success fee calculation sheet.
+
+---
+
+## Phase 6 — Operational Improvements (Parallel with Phases 3–5)
+
+These engineering items improve operational safety but do not block commercial launch.
+
+| Item | Effort | AI-executable | Priority |
+|------|--------|---------------|---------|
+| Rate limiting on POST /api/leads | 1 day | Partial | HIGH (before public Meta campaigns) |
+| Match cooldown guard (prevent duplicate shortlists) | 2 hours | YES | MEDIUM |
+| Ingest failure logging to system_actions | 30 minutes | YES | HIGH |
+| Add company_name to getOpenCompanyNeeds() | 30 minutes | YES | MEDIUM |
+| Run Match button in cockpit | 1 day | YES | MEDIUM |
+| Shortlist browse view in cockpit | 1–2 days | YES | MEDIUM |
+| Driver pool browse in cockpit | 2 days | YES | LOW |
+
+---
+
+## Phase 7 — Company Self-Service Intake (After First 3 Commercial Sales)
+
+**Goal:** Companies can express hiring needs without recruiter mediation.
+
+**What:** Web form at `/company/behov` capturing: company name, contact, license required, domain, region, urgency. Routes to a company intake queue (not directly to `POST /api/company-needs` — requires human validation step).
+**AI-executable:** Spec + code: YES. Deployment: requires founder approval.
+**Effort:** 2–3 days engineering.
+
+---
+
+## Phase 8 — Subscription Product (After ≥ 100 Drivers + 3 Repeat Clients)
+
+**Gate:** Monthly placement revenue ≥ 50,000 SEK for 2 consecutive months; ≥ 100 active drivers; ≥ 3 paying clients who have returned.
+
+**Product:** Package 5 (monthly subscription, 2,500 SEK/month) — ongoing access to new drivers as they enter the database.
+**Not before:** Subscription churn from a thin database destroys trust. Do not offer until the supply side is deep enough to fulfill monthly delivery commitments.
+
+---
+
+## Phase 9+ — Bemanning Feasibility (24–36 Months Out)
+
+**Not in the next 90 days. Not in the next 12 months. Only after:**
+- ≥ 500,000 SEK/month placement revenue for 3+ consecutive months
+- ≥ 200 active drivers in database
+- ≥ 2,000,000 SEK working capital reserve
+- Signed Kollektivavtal + Fora insurance registration
+
+**Bridge option (Phase 5–6):** Identify a bemanning partner to refer staffing inquiries to, earning a referral fee without operating staffing directly. See `bemanning-transition-analysis.md`.
 
 ---
 
 ## Phase Summary
 
-| Phase | Goal | Blocks | Status |
+| Phase | Goal | Status | Blocks |
 |-------|------|--------|--------|
-| 1.1 — SMS credentials | Real contact delivery | First real pilot | OPEN — infrastructure done, credentials pending |
-| 1.2–1.5 — Pilot readiness tasks | Tests, migrations, auth, metadataBase | First real pilot | **DONE** |
-| 1.5 — B2B Research | Pilot target selection + barrier mapping | Phase 2 form design | **ACTIVE** |
-| 2 — Company Need Capture | Self-service company intake | Removing recruiter bottleneck | Not started — 3–4 days |
-| 3 — Observability | Safe operation + rate limiting | Public campaigns | Not started — 3–4 days |
-| 4 — Legal Completeness | Final legal pages | Public-facing at scale | Not started — external + 1 day |
-| 5 — Scale Preparation | Volume capacity | Beyond pilot | Not started — 5–7 days |
+| **0** — Immediate founder actions | 46elks + inbox + budget decision | **OPEN — 40 minutes** | Everything |
+| **1** — Legal foundation | DPA + service agreement + privacy review | **OPEN — weeks (external)** | Every commercial transaction |
+| **2** — Driver acquisition | ≥20 drivers in database | **OPEN — weeks (campaign)** | Commercial product |
+| **3** — First Package 4 sale | First revenue | **OPEN — after Phase 0+2+legal** | — |
+| **4** — Package 2 scale | Verified shortlist product | After ≥15 drivers | — |
+| **5** — Success fee | Package 3 | After 3 Package 2 sales | — |
+| **6** — Operational improvements | Engineering items | Parallel | — |
+| **7** — Company self-service | Remove recruiter bottleneck | After 3 commercial sales | — |
+| **8** — Subscription | Package 5 | After 100+ drivers + 3 repeat clients | — |
+| **9+** — Bemanning | Staffing model | 24–36 months; capital required | — |
 
 ---
 
-## What Is Explicitly Out of Scope
+## What is Explicitly Out of Scope (2026-05-14 version — partially superseded)
 
-- **Lager/warehouse driver segment** — not in the current target market (C/CE/D + YKB heavy transport). Do not add warehouse categories, forklift, or light vehicle domains.
-- **Bus segment expansion** — D license is captured but not prioritized. Do not build bus-specific matching logic.
-- **CV upload or storage** — the no-CV positioning is a core differentiator. Do not add CV parsing or storage at any phase.
-- **Multi-recruiter access** — the system is designed for a single operator. Multi-user access requires a full auth overhaul (user accounts, per-user keys, audit log per user).
-- **Real-time matching dashboard** — the 15s polling cockpit is sufficient for pre-scale. Do not add WebSocket complexity.
+> Items marked ~~strikethrough~~ have been superseded by doctrine update 2026-06-16.
+
+- ~~**Bemanning/staffing now** — requires Kollektivavtal, Fora, 500,000–750,000 SEK payroll float. Not in scope.~~ *Superseded: bemanning is a planned commercial path. See `docs/business/logistikbemanning/scope-and-transition-plan.md`.*
+- **Cold outreach before workers exist** — approaching client companies without a deliverable product is harmful. Still applies.
+- **Success fee model before trust is established** — no collection mechanism; no legal structure; wait until 3 sales. Still applies.
+- **Subscription before 100+ workers** — cannot fulfill monthly delivery promise with thin database. Still applies.
+- ~~**Lager/warehouse/forklift segment** — not in target market.~~ *Superseded: all logistics workers are in scope. See `docs/business/logistikbemanning/scope-and-transition-plan.md`.*
+- **Bus segment (D license)** — D license captured but not prioritized. Still applies (low demand signal so far).
+- **CV upload or storage** — no-CV positioning is a core differentiator. Still applies.
+- **Multi-region before Stockholm is validated** — Stockholm first. Still applies.
+
+---
+
+## Recommended Immediate AI Tasks (Claude Code)
+
+1. **Draft 30-day driver acquisition plan** → `docs/business/driver-acquisition-plan.md`
+2. **Draft DPA template v1 (Swedish, GDPR Art. 26)** → `docs/business/legal/dpa-template-v1.md`
+3. **Draft service agreement template v1** → `docs/business/legal/service-agreement-v1.md`
+4. **Prepare Package 2 + Package 4 product one-pager (Swedish)** → `docs/business/commercial/product-one-pager-sv.md`
+5. **Prepare personalized brief for each top-5 pilot company** → `docs/business/commercial/pilot-company-briefs/`
+6. **Draft operator runbook** → `docs/current/operator-runbook.md`
+7. **Spec ingestion failure logging** → `docs/current/engineering-spec-failure-logging.md`

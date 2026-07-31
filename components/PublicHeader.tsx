@@ -83,10 +83,17 @@ export function PublicHeader() {
           </Link>
           <Link
             href="/contact"
-            className="text-sm text-gray-700 hover:text-blue-900 py-3 transition-colors"
+            className="text-sm text-gray-700 hover:text-blue-900 py-3 border-b border-gray-100 transition-colors"
             onClick={() => setOpen(false)}
           >
             Kontakt
+          </Link>
+          <Link
+            href="/logistikklubb"
+            className="text-sm text-gray-700 hover:text-blue-900 py-3 transition-colors"
+            onClick={() => setOpen(false)}
+          >
+            Logistikklubb
           </Link>
         </nav>
       )}

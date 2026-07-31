@@ -32,6 +32,7 @@ export interface DriverProfile {
     followUpAt: Date | null;
     followUpReason: FollowUpReason | null;
   };
+  openToBemanning: boolean | null;
   createdAt: Date;
   completedAt: Date | null;
 }
@@ -66,6 +67,7 @@ export function buildDriverProfile(lead: Lead): DriverProfile {
       followUpAt: lead.follow_up_at,
       followUpReason: lead.follow_up_reason,
     },
+    openToBemanning: lead.open_to_bemanning,
     createdAt: lead.created_at,
     completedAt: lead.completed_at,
   };

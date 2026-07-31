@@ -323,7 +323,7 @@ const sections: SectionDefinition[] = [
         blockType: 'cta-button',
         button: {
           labelKey: 'cta.primary',
-          href: { type: 'mailto', email: 'hej@drivernord.se' },
+          href: { type: 'mailto', email: 'hej@drivernord.com' },
           variant: 'primary',
           size: 'lg',
         },
@@ -375,7 +375,7 @@ export const companyPageContent: CompanyPageContent = {
     year: 2026,
     links: [
       { labelKey: 'footer.privacy', href: { type: 'anchor', id: 'top' } },
-      { labelKey: 'footer.contact', href: { type: 'mailto', email: 'hej@drivernord.se' } },
+      { labelKey: 'footer.contact', href: { type: 'mailto', email: 'hej@drivernord.com' } },
     ],
   },
 }

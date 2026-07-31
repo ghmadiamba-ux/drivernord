@@ -17,7 +17,7 @@ import { db } from '../lib/db';
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 const TEST_TOKEN    = 'EAAtest-wa-token-xyz789';
-const FOUNDER_PHONE = '46700000001';
+const FOUNDER_PHONE = '46709385267'; // sanctioned DriverNord business number
 const PHONE_NUM_ID  = '123456789012345';
 
 function setEnv(overrides: Record<string, string | undefined> = {}) {
@@ -410,5 +410,79 @@ describe('company number relay — WHATSAPP_FOUNDER_PHONE=46709385267', () => {
     const result = await sendWhatsAppTemplate({ to: COMPANY_PHONE, template_name: 'logistikklubb_post_due', language: 'sv', body_params: [] });
     expect(result.dry_run).toBe(true);
     expect(result.success).toBe(false);
+  });
+
+  it('normalizes Swedish national format (0709385267) to E.164 in Meta payload', async () => {
+    const LOCAL = '0709385267';
+    setEnv({ WHATSAPP_FOUNDER_PHONE: LOCAL });
+    const spy = vi.spyOn(global, 'fetch').mockImplementation(mockFetchOk('wamid.e164'));
+    await sendWhatsAppTemplate({ to: LOCAL, template_name: 'logistikklubb_post_due', language: 'sv', body_params: [] });
+    const [, init] = spy.mock.calls[0]!;
+    const body = JSON.parse((init as RequestInit).body as string) as Record<string, unknown>;
+    expect(body['to']).toBe('46709385267');
+  });
+
+  it('leaves already-international format unchanged in Meta payload', async () => {
+    const spy = vi.spyOn(global, 'fetch').mockImplementation(mockFetchOk());
+    await sendWhatsAppTemplate({ to: COMPANY_PHONE, template_name: 'logistikklubb_post_due', language: 'sv', body_params: [] });
+    const [, init] = spy.mock.calls[0]!;
+    const body = JSON.parse((init as RequestInit).body as string) as Record<string, unknown>;
+    expect(body['to']).toBe('46709385267');
+  });
+});
+
+// ─── BOM / invisible-char sanitization ───────────────────────────────────────
+// Regression tests for the ﻿1149360608265872 incident where WHATSAPP_PHONE_NUMBER_ID
+// was stored with a UTF-8 BOM prefix, causing Meta API HTTP 400.
+
+describe('BOM sanitization — WHATSAPP_PHONE_NUMBER_ID', () => {
+  beforeEach(() => setEnv());
+  afterEach(() => { vi.restoreAllMocks(); clearEnv(); });
+
+  it('strips UTF-8 BOM (\\uFEFF) prefix — Meta URL must contain clean digits only', async () => {
+    process.env.WHATSAPP_PHONE_NUMBER_ID = '﻿' + PHONE_NUM_ID;
+    const spy = vi.spyOn(global, 'fetch').mockImplementation(mockFetchOk());
+    await sendWhatsAppTemplate({ to: FOUNDER_PHONE, template_name: 't', language: 'sv', body_params: [] });
+    const url = spy.mock.calls[0]![0] as string;
+    expect(url).not.toContain('﻿');
+    expect(url).toContain(`/${PHONE_NUM_ID}/messages`);
+  });
+
+  it('strips zero-width space (\\u200B) prefix', async () => {
+    process.env.WHATSAPP_PHONE_NUMBER_ID = '​' + PHONE_NUM_ID;
+    const spy = vi.spyOn(global, 'fetch').mockImplementation(mockFetchOk());
+    await sendWhatsAppTemplate({ to: FOUNDER_PHONE, template_name: 't', language: 'sv', body_params: [] });
+    const url = spy.mock.calls[0]![0] as string;
+    expect(url).toContain(`/${PHONE_NUM_ID}/messages`);
+    expect(url).not.toContain('​');
+  });
+
+  it('strips compound invisible prefix (BOM + zero-width chars)', async () => {
+    process.env.WHATSAPP_PHONE_NUMBER_ID = '﻿​‌' + PHONE_NUM_ID;
+    const spy = vi.spyOn(global, 'fetch').mockImplementation(mockFetchOk());
+    await sendWhatsAppTemplate({ to: FOUNDER_PHONE, template_name: 't', language: 'sv', body_params: [] });
+    const url = spy.mock.calls[0]![0] as string;
+    expect(url).toContain(`/${PHONE_NUM_ID}/messages`);
+  });
+
+  it('strips surrounding whitespace', async () => {
+    process.env.WHATSAPP_PHONE_NUMBER_ID = '  ' + PHONE_NUM_ID + '  ';
+    const spy = vi.spyOn(global, 'fetch').mockImplementation(mockFetchOk());
+    await sendWhatsAppTemplate({ to: FOUNDER_PHONE, template_name: 't', language: 'sv', body_params: [] });
+    const url = spy.mock.calls[0]![0] as string;
+    expect(url).toContain(`/${PHONE_NUM_ID}/messages`);
+  });
+
+  it('plain ID passes through unchanged and succeeds', async () => {
+    const spy = vi.spyOn(global, 'fetch').mockImplementation(mockFetchOk('wamid.bom-regression'));
+    const result = await sendWhatsAppTemplate({ to: FOUNDER_PHONE, template_name: 't', language: 'sv', body_params: [] });
+    expect(result.success).toBe(true);
+    const url = spy.mock.calls[0]![0] as string;
+    expect(url).toContain(`/${PHONE_NUM_ID}/messages`);
+  });
+
+  it('isWhatsAppConfigured returns true even when phone number ID has BOM', () => {
+    process.env.WHATSAPP_PHONE_NUMBER_ID = '﻿' + PHONE_NUM_ID;
+    expect(isWhatsAppConfigured()).toBe(true);
   });
 });

@@ -151,24 +151,47 @@ describe('GET — slot detection from UTC hour', () => {
 
 // ─── POST slot override ───────────────────────────────────────────────────────
 
+// ─── POST confirm gate ────────────────────────────────────────────────────────
+
+describe('POST — confirm gate', () => {
+  it('returns 400 when body is empty (no confirm field)', async () => {
+    const res = await POST(makePost({}, withCronKey()));
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: string };
+    expect(body.error).toMatch(/confirm/i);
+  });
+
+  it('returns 400 when confirm is false', async () => {
+    const res = await POST(makePost({ confirm: false }, withCronKey()));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 200 when confirm is true (no slot override)', async () => {
+    const res = await POST(makePost({ confirm: true }, withCronKey()));
+    expect(res.status).toBe(200);
+  });
+});
+
+// ─── POST slot override ───────────────────────────────────────────────────────
+
 describe('POST — slot override', () => {
   it('uses morning slot when body contains { slot: "morning" }', async () => {
     vi.setSystemTime(new Date('2026-06-22T17:30:00Z')); // Would be evening automatically
-    const res = await POST(makePost({ slot: 'morning' }, withCronKey()));
+    const res = await POST(makePost({ confirm: true, slot: 'morning' }, withCronKey()));
     const body = await res.json() as { slot: string };
     expect(body.slot).toBe('morning');
   });
 
   it('uses evening slot when body contains { slot: "evening" }', async () => {
     vi.setSystemTime(new Date('2026-06-22T05:30:00Z')); // Would be morning automatically
-    const res = await POST(makePost({ slot: 'evening' }, withCronKey()));
+    const res = await POST(makePost({ confirm: true, slot: 'evening' }, withCronKey()));
     const body = await res.json() as { slot: string };
     expect(body.slot).toBe('evening');
   });
 
   it('ignores unknown slot values and falls back to UTC-hour detection', async () => {
     vi.setSystemTime(new Date('2026-06-22T05:30:00Z')); // Morning UTC
-    const res = await POST(makePost({ slot: 'midnight' }, withCronKey()));
+    const res = await POST(makePost({ confirm: true, slot: 'midnight' }, withCronKey()));
     const body = await res.json() as { slot: string };
     expect(body.slot).toBe('morning');
   });

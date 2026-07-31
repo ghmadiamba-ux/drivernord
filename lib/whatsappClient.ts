@@ -1,4 +1,4 @@
-// lib/whatsappClient.ts
+﻿// lib/whatsappClient.ts
 //
 // Meta WhatsApp Cloud API client for 1-to-1 founder relay notifications.
 // Sends approved Meta template messages to a single configured recipient.
@@ -105,12 +105,26 @@ export async function getWhatsAppTodayCount(): Promise<number> {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// Strips UTF-8 BOM and zero-width chars from env vars copied from Meta.
+function stripInvisibleChars(s: string): string {
+  return s.replace(/^[\uFEFF\u200B\u200C\u200D\uFFFE]+/, '').trim();
+}
+
+// Normalizes a Swedish phone number to international format (digits only, no +).
+// Meta WhatsApp API requires E.164-style numbers without '+' in the 'to' field.
+// 0709385267 \u2192 46709385267 \u00B7 +46709385267 \u2192 46709385267 \u00B7 46709385267 \u2192 46709385267
+function toE164SE(phone: string): string {
+  const digits = stripInvisibleChars(phone).replace(/\D/g, '');
+  if (digits.startsWith('0')) return '46' + digits.slice(1);
+  return digits;
+}
+
 // Replaces the access token with [REDACTED] if it appears in an error string.
 // Called on all strings before returning them to callers.
-function redactToken(text: string): string {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
-  if (!token || !text.includes(token)) return text;
-  return text.replace(token, '[REDACTED]');
+function redactToken(text: string, token?: string): string {
+  const t = token ?? stripInvisibleChars(process.env.WHATSAPP_ACCESS_TOKEN ?? '');
+  if (!t || !text.includes(t)) return text;
+  return text.replace(t, '[REDACTED]');
 }
 
 // ─── Send ─────────────────────────────────────────────────────────────────────
@@ -125,9 +139,12 @@ export async function sendWhatsAppTemplate(input: WhatsAppSendInput): Promise<Wh
     };
   }
 
-  // Allowlist guard — only the configured founder phone may receive messages
+  // Allowlist guard — only the configured founder phone may receive messages.
+  // Normalize both sides (strip BOM/zero-width/non-digits) so an invisible char
+  // copied from Meta/Vercel cannot defeat the comparison.
+  const onlyDigits = (s: string) => stripInvisibleChars(s).replace(/\D/g, '');
   const allowedPhone = getWhatsAppFounderPhone();
-  if (input.to !== allowedPhone) {
+  if (onlyDigits(input.to) !== onlyDigits(allowedPhone)) {
     return {
       success:    false,
       message_id: null,
@@ -137,7 +154,7 @@ export async function sendWhatsAppTemplate(input: WhatsAppSendInput): Promise<Wh
   }
 
   try {
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID!;
+    const phoneNumberId = stripInvisibleChars(process.env.WHATSAPP_PHONE_NUMBER_ID ?? '');
     const url = `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}/messages`;
 
     const components = input.body_params.length > 0 ? [
@@ -149,7 +166,7 @@ export async function sendWhatsAppTemplate(input: WhatsAppSendInput): Promise<Wh
 
     const payload = {
       messaging_product: 'whatsapp',
-      to:   input.to,
+      to:   toE164SE(input.to),
       type: 'template',
       template: {
         name:     input.template_name,
@@ -158,10 +175,11 @@ export async function sendWhatsAppTemplate(input: WhatsAppSendInput): Promise<Wh
       },
     };
 
+    const accessToken = stripInvisibleChars(process.env.WHATSAPP_ACCESS_TOKEN ?? '');
     const res = await fetch(url, {
       method:  'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type':  'application/json',
       },
       body: JSON.stringify(payload),
@@ -173,7 +191,7 @@ export async function sendWhatsAppTemplate(input: WhatsAppSendInput): Promise<Wh
         success:    false,
         message_id: null,
         dry_run:    false,
-        error:      `Meta API HTTP ${res.status}: ${redactToken(text)}`,
+        error:      `Meta API HTTP ${res.status}: ${redactToken(text, accessToken)}`,
       };
     }
 

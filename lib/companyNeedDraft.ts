@@ -30,7 +30,8 @@ export type DraftStatus =
   | 'ready_for_review'
   | 'approved_for_matching'
   | 'rejected'
-  | 'promoted';
+  | 'promoted'
+  | 'hold_agency';
 
 export interface CompanyNeedDraftRow {
   id:                  string;
@@ -257,8 +258,9 @@ export type PromoteOutcome =
 
 // Validation rules for promotion
 function validateForPromotion(draft: CompanyNeedDraftRow): string | null {
-  if (draft.draft_status === 'promoted') return 'already promoted';
-  if (draft.draft_status === 'rejected') return 'draft is rejected';
+  if (draft.draft_status === 'promoted')   return 'already promoted';
+  if (draft.draft_status === 'rejected')   return 'draft is rejected';
+  if (draft.draft_status === 'hold_agency') return 'staffing agency draft — cannot be promoted as normal client need';
   if (!draft.license_required)  return 'license_required is missing';
   if (!draft.domain_required)   return 'domain_required is missing';
   if (!draft.location_region)   return 'location_region is missing';

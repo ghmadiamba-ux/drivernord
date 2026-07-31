@@ -1,9 +1,10 @@
-import { getMatchableOpenCompanyNeeds } from './companyNeedStore';
+import { getMatchableOpenCompanyNeeds, getCompanyNamesForIds } from './companyNeedStore';
 import { getActiveIngestedDrivers } from './ingestedDriverStore';
 import { buildShortlist } from './matchingEngine';
 import { createShortlist, getShortlistByNeedId } from './shortlistStore';
 import { logAction } from './systemActions';
 import { runContactAgent } from './contactAgent';
+import { isDoNotContact } from './doNotContact';
 import type { MatchNeed } from './matchScore';
 import type { License } from '../types/lead';
 import type { ShortlistEntry, RejectedDriver } from './matchingEngine';
@@ -171,4 +172,121 @@ export async function runMatchingAgent(input: MatchAgentInput): Promise<MatchAge
     totalShortlisted:   result.totalShortlisted,
     summary:            result.summary,
   };
+}
+
+// ── Stale shortlist refresh ───────────────────────────────────────────────────
+
+export interface ShortlistRefreshResult {
+  run_type:               'shortlist_refresh';
+  needs_checked:          number;
+  stale_needs_found:      number;
+  shortlists_refreshed:   number;
+  skipped_do_not_contact: number;
+  skipped_fresh:          number;
+  errors:                 string[];
+}
+
+// Scans every matchable open company need and re-runs matching for any whose
+// shortlist is absent or older than SHORTLIST_STALE_MS.
+// Never creates outreach — contact agent in suggest mode only logs suggestions.
+// Safe to call from cron: idempotent, no PII in logs, no side-effects beyond DB writes.
+export async function refreshStaleShortlists(): Promise<ShortlistRefreshResult> {
+  const summary: ShortlistRefreshResult = {
+    run_type:               'shortlist_refresh',
+    needs_checked:          0,
+    stale_needs_found:      0,
+    shortlists_refreshed:   0,
+    skipped_do_not_contact: 0,
+    skipped_fresh:          0,
+    errors:                 [],
+  };
+
+  // ── 1. Fetch all matchable open needs ────────────────────────────────────────
+  let needs;
+  try {
+    needs = await getMatchableOpenCompanyNeeds();
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    summary.errors.push(`fetch_needs: ${error}`);
+    await logAction({
+      action_type:  'shortlist_refresh',
+      triggered_by: 'cron:shortlist_refresh_v1',
+      target_type:  'company_need',
+      target_id:    'all',
+      status:       'failed',
+      error,
+    });
+    return summary;
+  }
+
+  summary.needs_checked = needs.length;
+
+  // ── 2. Resolve company names (one round-trip) for do-not-contact checks ─────
+  const companyIds = [...new Set(needs.map((n) => n.company_id))];
+  let companyNameMap: Record<string, string> = {};
+  try {
+    companyNameMap = await getCompanyNamesForIds(companyIds);
+  } catch (_) {
+    // Non-fatal: hardcoded exclusions still apply even without name resolution
+  }
+
+  // ── 3. Per-need: DNC guard → staleness check → refresh ──────────────────────
+  for (const need of needs) {
+    const companyName = companyNameMap[need.company_id] ?? '';
+
+    if (isDoNotContact({ company_name: companyName })) {
+      summary.skipped_do_not_contact++;
+      continue;
+    }
+
+    // Check whether the existing shortlist is still fresh
+    let existing: { id: string; created_at: string; total_shortlisted: number } | null = null;
+    try {
+      existing = await getShortlistByNeedId(need.id);
+    } catch (_) {
+      // Treat as stale if lookup fails — ensureShortlistForNeed handles it
+    }
+
+    if (existing) {
+      const ageMs = Date.now() - new Date(existing.created_at).getTime();
+      if (ageMs < SHORTLIST_STALE_MS) {
+        summary.skipped_fresh++;
+        continue;
+      }
+    }
+
+    summary.stale_needs_found++;
+
+    try {
+      const refreshed = await ensureShortlistForNeed(need.id);
+      if (refreshed.ok) {
+        summary.shortlists_refreshed++;
+      } else {
+        summary.errors.push(`need:${need.id} error:${refreshed.error}`);
+      }
+    } catch (err) {
+      summary.errors.push(
+        `need:${need.id} error:${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  // ── 4. Log the refresh run (no PII — only counts and UUIDs) ─────────────────
+  await logAction({
+    action_type:  'shortlist_refresh',
+    triggered_by: 'cron:shortlist_refresh_v1',
+    target_type:  'company_need',
+    target_id:    'all',
+    status:       'completed',
+    result: {
+      needs_checked:          summary.needs_checked,
+      stale_needs_found:      summary.stale_needs_found,
+      shortlists_refreshed:   summary.shortlists_refreshed,
+      skipped_do_not_contact: summary.skipped_do_not_contact,
+      skipped_fresh:          summary.skipped_fresh,
+      error_count:            summary.errors.length,
+    },
+  });
+
+  return summary;
 }

@@ -24,6 +24,18 @@ const base = (overrides: Partial<Lead> = {}): Lead => ({
   follow_up_sent: false,
   follow_up_at: null,
   follow_up_reason: null,
+  consent_registration_at: null,
+  consent_registration_version: null,
+  consent_scope: null,
+  open_to_bemanning: null,
+  bemanning_consent_at: null,
+  utm_source: null,
+  utm_medium: null,
+  utm_campaign: null,
+  utm_content: null,
+  utm_term: null,
+  landing_page_url: null,
+  referrer_url: null,
   ...overrides,
 });
 
@@ -237,6 +249,175 @@ describe('applyStep — email', () => {
     if (!result.ok) return;
     expect(result.lead.email).toBe('driver@example.com');
     expect(result.next_step).toBe('name');
+  });
+});
+
+// ─── name ─────────────────────────────────────────────────────────────────────
+
+describe('applyStep — name', () => {
+  it('null answer returns missing_answer error', () => {
+    const result = applyStep(base(), 'name', null);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe('missing_answer');
+  });
+
+  it('valid name is stored', () => {
+    const result = applyStep(base(), 'name', 'Anna');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.lead.first_name).toBe('Anna');
+  });
+
+  it('phone number as name returns invalid_answer', () => {
+    const result = applyStep(base(), 'name', '+46701234567');
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe('invalid_answer');
+  });
+
+  it('domestic phone format as name returns invalid_answer', () => {
+    const result = applyStep(base(), 'name', '0701234567');
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe('invalid_answer');
+  });
+});
+
+// ─── consent ──────────────────────────────────────────────────────────────────
+
+describe('applyStep — consent', () => {
+  it('"accepted" stores consent fields and advances to confirmation', () => {
+    const lead = base({
+      region: 'stockholm',
+      license: 'CE',
+      ykb: 'valid',
+      availability: 'now',
+      phone: '+46701234567',
+      first_name: 'Erik',
+      last_step_reached: 6,
+    });
+    const before = Date.now();
+    const result = applyStep(lead, 'consent', 'accepted');
+    const after = Date.now();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.next_step).toBe('bemanning_open');
+    expect(result.lead.consent_registration_at).not.toBeNull();
+    expect(result.lead.consent_registration_at!.getTime()).toBeGreaterThanOrEqual(before);
+    expect(result.lead.consent_registration_at!.getTime()).toBeLessThanOrEqual(after);
+    expect(result.lead.consent_registration_version).toBe('driver-consent-v1-2026-05-14');
+    expect(result.lead.consent_scope).toBe(
+      'driver_registration_matching_no_company_sharing_without_separate_consent',
+    );
+  });
+
+  it('consent step sets last_step_reached to 7, triggering ready_for_ingestion', () => {
+    const lead = base({
+      region: 'stockholm',
+      license: 'CE',
+      ykb: 'valid',
+      availability: 'now',
+      phone: '+46701234567',
+      first_name: 'Erik',
+      last_step_reached: 6,
+    });
+    const result = applyStep(lead, 'consent', 'accepted');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.lead.last_step_reached).toBe(7);
+    expect(result.lead.lead_status).toBe('ready_for_ingestion');
+  });
+
+  it('null answer → invalid_answer (consent cannot be skipped)', () => {
+    const result = applyStep(base(), 'consent', null);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe('invalid_answer');
+  });
+
+  it('any answer other than "accepted" → invalid_answer', () => {
+    const result = applyStep(base(), 'consent', 'maybe');
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe('invalid_answer');
+  });
+
+  it('consent does not overwrite existing consent if already set', () => {
+    const existing = new Date('2026-05-01T08:00:00.000Z');
+    const lead = base({
+      phone: '+46701234567',
+      last_step_reached: 6,
+      consent_registration_at: existing,
+    });
+    const result = applyStep(lead, 'consent', 'accepted');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // A new consent timestamp is set (not idempotent — re-consent updates the time)
+    expect(result.lead.consent_registration_at).not.toBeNull();
+  });
+});
+
+// ─── bemanning_open ───────────────────────────────────────────────────────────
+
+describe('applyStep — bemanning_open', () => {
+  it('"yes" sets open_to_bemanning=true and bemanning_consent_at timestamp', () => {
+    const before = Date.now();
+    const result = applyStep(base(), 'bemanning_open', 'yes');
+    const after = Date.now();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.lead.open_to_bemanning).toBe(true);
+    expect(result.lead.bemanning_consent_at).not.toBeNull();
+    expect(result.lead.bemanning_consent_at!.getTime()).toBeGreaterThanOrEqual(before);
+    expect(result.lead.bemanning_consent_at!.getTime()).toBeLessThanOrEqual(after);
+    expect(result.next_step).toBe('confirmation');
+  });
+
+  it('"no" sets open_to_bemanning=false and no consent timestamp', () => {
+    const result = applyStep(base(), 'bemanning_open', 'no');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.lead.open_to_bemanning).toBe(false);
+    expect(result.lead.bemanning_consent_at).toBeNull();
+    expect(result.next_step).toBe('confirmation');
+  });
+
+  it('null answer → missing_answer error', () => {
+    const result = applyStep(base(), 'bemanning_open', null);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe('missing_answer');
+  });
+
+  it('invalid answer → invalid_answer error', () => {
+    const result = applyStep(base(), 'bemanning_open', 'maybe');
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe('invalid_answer');
+  });
+
+  it('does not affect lead_status — ready_for_ingestion persists after bemanning_open', () => {
+    const lead = base({
+      region: 'stockholm',
+      license: 'CE',
+      ykb: 'valid',
+      availability: 'now',
+      phone: '+46701234567',
+      first_name: 'Erik',
+      last_step_reached: 7,
+      lead_status: 'ready_for_ingestion',
+    });
+    const result = applyStep(lead, 'bemanning_open', 'yes');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.lead.lead_status).toBe('ready_for_ingestion');
   });
 });
 

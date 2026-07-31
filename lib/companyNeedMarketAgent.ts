@@ -22,6 +22,7 @@ import { randomUUID } from 'node:crypto';
 import { db } from './db';
 import { logAction } from './systemActions';
 import { listDrafts } from './companyNeedDraft';
+import { classifyPostingSource } from './agencyScanAgent';
 import type { CompanyNeedDraftRow } from './companyNeedDraft';
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
@@ -32,6 +33,7 @@ export type MarketLifecycle =
   | 'needs_refresh'                // signal is stale (> STALE_DAYS old)
   | 'ready_for_internal_promotion' // complete + scored + above threshold + supply available
   | 'hold_supply_gap'              // above threshold but DriverNord has zero matching supply
+  | 'hold_agency'                  // staffing/bemanning agency — excluded from normal client pipeline
   | 'promoted'                     // draft already promoted to company_needs
   | 'expired'                      // signal too old to act on (> EXPIRED_DAYS)
   | 'rejected';                    // draft explicitly rejected
@@ -186,16 +188,22 @@ export function scoreMarketOpportunity(input: ScoreInput): MarketOpportunityScor
 // ─── Lifecycle classification (pure) ─────────────────────────────────────────
 
 export interface LifecycleInput {
-  draft_status:   string;
-  missing_fields: string[];
-  scan_date_iso:  string | null;
-  composite:      number;
-  supply_fit?:    SupplyFit; // optional — when absent treated as UNKNOWN_SUPPLY (no blocking)
+  draft_status:       string;
+  missing_fields:     string[];
+  scan_date_iso:      string | null;
+  composite:          number;
+  supply_fit?:        SupplyFit; // optional — when absent treated as UNKNOWN_SUPPLY (no blocking)
+  is_staffing_agency?: boolean;  // true → hold_agency (excluded from normal promotion pipeline)
 }
 
 export function classifyMarketLifecycle(input: LifecycleInput): MarketLifecycle {
-  if (input.draft_status === 'promoted') return 'promoted';
-  if (input.draft_status === 'rejected') return 'rejected';
+  if (input.draft_status === 'promoted')   return 'promoted';
+  if (input.draft_status === 'rejected')   return 'rejected';
+  if (input.draft_status === 'hold_agency') return 'hold_agency';
+
+  // Staffing/bemanning agency gate — must not enter the normal promotion pipeline.
+  // Checked before any scoring logic so classification is unconditional.
+  if (input.is_staffing_agency) return 'hold_agency';
 
   // Data gaps take priority — can't promote or reliably evaluate without complete fields
   if (input.missing_fields.length > 0) return 'research_discovered';
@@ -229,6 +237,8 @@ export function buildRecommendedAction(lifecycle: MarketLifecycle, composite: nu
       return `Score ${composite} — promote to active_public_need; founder review before any outreach`;
     case 'hold_supply_gap':
       return `Score ${composite} — above threshold but SUPPLY_GAP: recruit matching drivers before promoting`;
+    case 'hold_agency':
+      return 'Staffing/bemanning agency — excluded from normal client outreach; routes to agency_posting_signals for commercial classification';
     case 'needs_refresh':
       return 'Signal is stale — re-verify public sources before acting';
     case 'expired':
@@ -410,7 +420,12 @@ async function evaluateDrafts(): Promise<{ signals: MarketSignal[]; companyNames
   const signals: MarketSignal[] = [];
 
   for (const draft of drafts) {
-    const contact   = targetContacts.get(draft.target_id) ?? null;
+    const companyName    = companyNames.get(draft.target_id) ?? 'Unknown';
+    const contact        = targetContacts.get(draft.target_id) ?? null;
+    const meta           = (draft.metadata ?? {}) as Record<string, unknown>;
+    const descriptionSnippet = (meta.description_snippet as string | null) ?? null;
+    const isStaffingAgency   = classifyPostingSource(companyName, descriptionSnippet) === 'staffing_agency';
+
     const input     = buildScoreInputFromDraft(draft, contact);
     const scores    = scoreMarketOpportunity(input);
     const supplyFit = classifySupplyFit(
@@ -419,15 +434,16 @@ async function evaluateDrafts(): Promise<{ signals: MarketSignal[]; companyNames
       supplyMap,
     );
     const lifecycle = classifyMarketLifecycle({
-      draft_status:   draft.draft_status,
-      missing_fields: draft.missing_fields,
-      scan_date_iso:  input.scan_date_iso,
-      composite:      scores.composite,
-      supply_fit:     supplyFit,
+      draft_status:       draft.draft_status,
+      missing_fields:     draft.missing_fields,
+      scan_date_iso:      input.scan_date_iso,
+      composite:          scores.composite,
+      supply_fit:         supplyFit,
+      is_staffing_agency: isStaffingAgency,
     });
 
     signals.push({
-      company_name:          companyNames.get(draft.target_id) ?? 'Unknown',
+      company_name:          companyName,
       draft_id:              draft.id,
       need_id:               draft.converted_need_id ?? null,
       lifecycle,
@@ -587,7 +603,13 @@ export async function runMarketImportScan(
   signals: import('./marketSignalTypes').NormalizedMarketSignal[],
   sourceTypes: import('./marketSignalTypes').MarketSignalSourceType[],
 ): Promise<MarketScanResult> {
-  const { importMarketSignals } = await import('./marketSignalImport');
+  const { importMarketSignals }    = await import('./marketSignalImport');
+  const { runAgencyPostingScan }   = await import('./agencyScanAgent');
+
+  // Detect agency signals in the incoming batch before import
+  await runAgencyPostingScan(signals).catch((err) =>
+    console.warn('[companyNeedMarketAgent] agency scan (import) failed (non-fatal):', err),
+  );
 
   const importSummary = await importMarketSignals(signals, {
     run_type:     'import_run',
@@ -650,6 +672,7 @@ export async function runMarketImportScan(
 export async function runLiveScanCycle(): Promise<MarketScanResult> {
   const { platsbankenConnector } = await import('./marketScanConnectors/platsbanken');
   const { importMarketSignals }  = await import('./marketSignalImport');
+  const { runAgencyPostingScan } = await import('./agencyScanAgent');
 
   const connectors = [platsbankenConnector].filter((c) => c.enabled);
   const liveScanAvailable = connectors.length > 0;
@@ -673,6 +696,11 @@ export async function runLiveScanCycle(): Promise<MarketScanResult> {
     connectorErrors.push(...result.errors);
     sourceTypes.push(connector.source_type as import('./marketSignalTypes').MarketSignalSourceType);
   }
+
+  // Detect agency signals in the live batch before import
+  await runAgencyPostingScan(allSignals).catch((err) =>
+    console.warn('[companyNeedMarketAgent] agency scan (live) failed (non-fatal):', err),
+  );
 
   const importSummary = await importMarketSignals(allSignals, {
     run_type:              'live_scan',

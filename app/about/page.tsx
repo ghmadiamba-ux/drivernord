@@ -5,9 +5,22 @@ import { LegalFooter } from '@/components/LegalFooter';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://drivernord.com'),
-  title: 'Om DriverNord',
+  title: 'Om DriverNord — matchningstjänst för chaufförer och transportföretag',
   description:
-    'DriverNord är en matchningstjänst för professionella chaufförer och transportföretag i Sverige.',
+    'DriverNord matchar professionella CE-, C- och D-chaufförer med transportföretag i Sverige. Ingen bemanning — direktkontakt med kvalificerade förare med giltig YKB.',
+  openGraph: {
+    title: 'Om DriverNord — matchningstjänst för chaufförer och transportföretag',
+    description: 'DriverNord matchar professionella CE-, C- och D-chaufförer med transportföretag i Sverige. Ingen bemanning — direktkontakt med kvalificerade förare med giltig YKB.',
+    url: 'https://drivernord.com/about',
+    siteName: 'DriverNord',
+    locale: 'sv_SE',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Om DriverNord — matchningstjänst för chaufförer och transportföretag',
+    description: 'DriverNord matchar professionella CE-, C- och D-chaufförer med transportföretag i Sverige. Ingen bemanning — direktkontakt med kvalificerade förare med giltig YKB.',
+  },
 };
 
 export default function AboutPage() {
@@ -114,14 +127,23 @@ export default function AboutPage() {
               geografiskt och förbättrar matchningsflödet kontinuerligt.
             </p>
             <div className="bg-blue-50 border border-blue-100 rounded-xl px-6 py-5">
-              <p className="text-blue-900 font-semibold text-sm mb-1">Kontakt</p>
-              <p className="text-gray-600 text-sm leading-relaxed">
+              <p className="text-blue-900 font-semibold text-sm mb-2">Kontakt</p>
+              <p className="text-gray-600 text-sm leading-relaxed mb-1">
                 Frågor om tjänsten, samarbeten eller din profil:{' '}
                 <a
                   href="mailto:hej@drivernord.com"
                   className="text-blue-600 hover:text-blue-800 transition-colors"
                 >
                   hej@drivernord.com
+                </a>
+              </p>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                Telefon:{' '}
+                <a
+                  href="tel:+46709385267"
+                  className="text-blue-600 hover:text-blue-800 transition-colors font-medium"
+                >
+                  070-938 52 67
                 </a>
               </p>
             </div>

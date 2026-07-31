@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+Disallow: /recruiter/
+Disallow: /api/
+
+Sitemap: https://drivernord.com/sitemap.xml

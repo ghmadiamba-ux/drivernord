@@ -3,15 +3,19 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { PublicHeader } from '@/components/PublicHeader';
 import { LegalFooter } from '@/components/LegalFooter';
+import { ViewContentTracker } from '@/components/analytics/ViewContentTracker';
+import { WhatsAppCTAButton } from '@/components/community/WhatsAppCTAButton';
+
+const WA_URL = process.env.NEXT_PUBLIC_WHATSAPP_COMMUNITY_URL ?? 'https://chat.whatsapp.com/HC2QY2W32CYIIXpxawXSOG';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://drivernord.com'),
-  title: 'DriverNord — Chaufförsjobb utan CV-krångel',
+  title: 'CE- och C-chaufförer i Stockholm — DriverNord',
   description:
-    'Registrera dig på cirka 2 minuter. DriverNord matchar chaufförer med relevanta transportuppdrag.',
+    'Inte bemanning. DriverNord matchar CE- och C-chaufförer med transportföretag i Stockholm. 3 minuter, inget CV. Din profil delas aldrig utan ditt godkännande. Gratis för förare.',
   openGraph: {
-    title:       'DriverNord — Chaufförsjobb utan CV-krångel',
-    description: 'Registrera dig på cirka 2 minuter. DriverNord matchar chaufförer med relevanta transportuppdrag.',
+    title:       'CE- och C-chaufförer i Stockholm — DriverNord',
+    description: 'Inte bemanning. DriverNord matchar CE- och C-chaufförer med transportföretag i Stockholm. 3 minuter, inget CV. Din profil delas aldrig utan ditt godkännande.',
     url:         'https://drivernord.com/chaufforer',
     siteName:    'DriverNord',
     locale:      'sv_SE',
@@ -19,8 +23,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card:        'summary_large_image',
-    title:       'DriverNord — Chaufförsjobb utan CV-krångel',
-    description: 'Registrera dig på cirka 2 minuter. DriverNord matchar chaufförer med relevanta transportuppdrag.',
+    title:       'CE- och C-chaufförer i Stockholm — DriverNord',
+    description: 'Inte bemanning. DriverNord matchar CE- och C-chaufförer med transportföretag i Stockholm. 3 minuter, inget CV. Din profil delas aldrig utan ditt godkännande.',
   },
 };
 
@@ -59,19 +63,20 @@ function Hero() {
           {/* Text column */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-blue-400 mb-5">
-              För professionella chaufförer
+              CE · C · YKB · Stockholm
             </p>
             <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-6">
-              Chaufförsjobb utan CV-krångel.
+              Kör du CE eller C? Transportföretag söker din profil — inte tvärtom.
             </h1>
             <p className="text-blue-200 text-base md:text-lg leading-relaxed mb-8 max-w-xl">
-              Registrera dig på cirka 2 minuter. Vi frågar om körkort, YKB och
-              tillgänglighet — sedan matchar DriverNord din profil med relevanta
-              transportuppdrag.
+              DriverNord är inte ett bemanningsbolag. Vi matchar CE- och C-förare
+              med åkerier i Stockholm som söker din specifika kompetens. Du anger
+              vad du kör och när du är tillgänglig — vi hör av oss bara vid en
+              konkret match.
             </p>
             <CTAButton />
             <p className="mt-4 text-blue-400 text-sm">
-              Inget konto. Inget CV först. Mobilanpassat.
+              3 minuter. Inget CV. Din profil delas aldrig utan ditt godkännande.
             </p>
           </div>
 
@@ -120,10 +125,10 @@ function MobileHeroImage() {
 // ─── Trust strip ──────────────────────────────────────────────────────────────
 
 const TRUST_ITEMS = [
-  { stat: '~2 min', label: 'Registreringstid' },
-  { stat: 'Inget CV', label: 'krävs i första steget' },
-  { stat: 'YKB & körkort', label: 'i fokus' },
-  { stat: 'Tydligt', label: 'nästa steg' },
+  { stat: '3 minuter', label: 'Registreringstid' },
+  { stat: 'Inget CV', label: 'krävs' },
+  { stat: 'CE, C, YKB', label: 'i fokus — inte ett generellt CV' },
+  { stat: 'Inte bemanning', label: 'vi tar aldrig en andel av din lön' },
 ];
 
 function TrustStrip() {
@@ -152,18 +157,18 @@ function TrustStrip() {
 const STEPS = [
   {
     n: '1',
-    title: 'Svara på några frågor',
-    body: 'Körkortsklass, YKB-status, förarkort, var du befinner dig och när du kan börja. Inga långa formulär.',
+    title: 'Ange vad du kör och när du är tillgänglig',
+    body: 'CE eller C, YKB-status, förarkort, region och tillgänglighet. Inga långa formulär — tar 3 minuter.',
   },
   {
     n: '2',
-    title: 'Systemet klassificerar din profil',
-    body: 'DriverNord sorterar din profil baserat på kvalifikationer och tillgänglighet — inte hur bra du skriver.',
+    title: 'Vi matchar baserat på kompetens — inte CV',
+    body: 'DriverNord matchar din profil mot åkerier som söker exakt din körkortsklass, YKB och körningstyp. Inte hur bra du skriver.',
   },
   {
     n: '3',
-    title: 'Du matchas när rätt uppdrag finns',
-    body: 'Vi kontaktar dig direkt när ett relevant transportuppdrag matchar din profil. Ingen väntan i kö.',
+    title: 'Du bestämmer om du vill gå vidare',
+    body: 'Vi hör av oss bara när vi har en konkret match. Din profil delas aldrig med ett åkeri utan ditt separata godkännande.',
   },
 ];
 
@@ -173,7 +178,7 @@ function HowItWorks() {
       <div className="max-w-5xl mx-auto px-5 py-20 md:py-24">
         <Eyebrow>Så här fungerar det</Eyebrow>
         <h2 className="text-2xl md:text-3xl font-bold text-blue-900 mb-12">
-          Tre steg från registrering till matchning.
+          Från profil till match — utan CV-krångel.
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
           {STEPS.map((step, i) => (
@@ -215,11 +220,11 @@ function BuiltForDrivers() {
       <div className="max-w-5xl mx-auto px-5 py-20 md:py-24">
         <Eyebrow>Vad vi frågar om</Eyebrow>
         <h2 className="text-2xl md:text-3xl font-bold text-blue-900 mb-4">
-          Byggt för professionella chaufförer.
+          Körkortsklass, YKB, specialkompetens — inte ett CV.
         </h2>
         <p className="text-gray-600 text-base leading-relaxed mb-10 max-w-xl">
-          DriverNord frågar om det som faktiskt avgör om du passar ett uppdrag.
-          Inget mer. Inget CV.
+          DriverNord frågar om det som faktiskt avgör om du passar ett uppdrag
+          och inget annat. Det tar 3 minuter.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {DRIVER_FIELDS.map((field) => (
@@ -242,19 +247,19 @@ function BuiltForDrivers() {
 // ─── Comparison ───────────────────────────────────────────────────────────────
 
 const TRADITIONAL = [
-  'Långa ansökningsformulär',
-  'CV-uppladdning krävs',
-  'Generella platsannonser',
-  'Vänta på manuell granskning',
-  'Inga garantier på återkoppling',
+  'Bemanningsbolag tar 25–30% av vad du genererar',
+  'Din kontaktinfo delas utan ditt godkännande',
+  'Spekulativa samtal utan konkret match',
+  'CV-krångel och långa ansökningsprocesser',
+  'Alla förare behandlas likadant — din specialkompetens syns inte',
 ];
 
 const DRIVERNORD = [
-  'Strukturerad chaufförsprofil på 2 min',
-  'Inget CV i första steget',
-  'Transportspecifik matchning',
-  'Automatisk profilklassificering',
-  'Direkt kontakt när match finns',
+  'Gratis för förare — transportföretaget betalar',
+  'Din profil delas aldrig utan ditt separata godkännande',
+  'Vi hör av oss bara vid en konkret match',
+  '3 minuter — inget CV, ingen ansökan',
+  'Matchning på CE, C, YKB, HIAB, kyl, ADR — din faktiska kompetens',
 ];
 
 function CheckIcon() {
@@ -291,15 +296,15 @@ function Comparison() {
   return (
     <section className="bg-white">
       <div className="max-w-5xl mx-auto px-5 py-20 md:py-24">
-        <Eyebrow>Varför inte vanliga jobbsajter</Eyebrow>
+        <Eyebrow>Varför inte bemanning eller jobbsajter</Eyebrow>
         <h2 className="text-2xl md:text-3xl font-bold text-blue-900 mb-12">
-          DriverNord är inte en jobbsajt.
+          DriverNord är inte ett bemanningsbolag.
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Traditional */}
           <div className="rounded-xl border border-gray-200 bg-gray-50 px-6 py-6">
             <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-5">
-              Traditionella jobbsajter
+              Bemanningsbolag och jobbsajter
             </p>
             <ul className="space-y-3">
               {TRADITIONAL.map((item) => (
@@ -333,24 +338,60 @@ function Comparison() {
   );
 }
 
+// ─── Logistikklubb community CTA ──────────────────────────────────────────────
+
+function LogistikklubbCTA() {
+  return (
+    <section className="bg-white border-y border-blue-100">
+      <div className="max-w-5xl mx-auto px-5 py-14">
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-6 justify-between">
+          <div className="max-w-xl">
+            <p className="text-xs font-semibold uppercase tracking-widest text-green-600 mb-2">
+              DriverNord Logistikklubb
+            </p>
+            <h3 className="text-blue-900 font-bold text-xl mb-2 leading-snug">
+              Branschnätverk för transport, lager och logistik i Sverige
+            </h3>
+            <p className="text-gray-600 text-sm leading-relaxed">
+              En gratis WhatsApp-gemenskap för förare, truckförare och logistikpersonal.
+              Inte för att söka jobb — för att vara del av branschen.{' '}
+              <a href="/logistikklubb" className="text-blue-600 hover:underline">
+                Läs mer
+              </a>
+            </p>
+          </div>
+          <div className="flex-shrink-0">
+            <WhatsAppCTAButton
+              url={WA_URL}
+              label="Gå med gratis"
+              className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-500 active:bg-green-700
+                         text-white font-semibold text-sm px-6 py-3 rounded-lg transition-colors shadow-sm"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Final CTA ────────────────────────────────────────────────────────────────
 
 function FinalCTA() {
   return (
     <section className="bg-blue-900">
       <div className="max-w-3xl mx-auto px-5 py-20 md:py-24 text-center">
-        <Eyebrow>Redo att komma igång?</Eyebrow>
+        <Eyebrow>CE eller C med giltig YKB?</Eyebrow>
         <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-          Registrera dig på circa 2 minuter.
+          Registrera din profil på 3 minuter.
         </h2>
         <p className="text-blue-300 text-base leading-relaxed mb-8 max-w-lg mx-auto">
-          Inget konto. Inget CV först. Vi frågar om det som faktiskt spelar roll
-          och matchar dig mot relevanta transportuppdrag.
+          Ingen ansökan. Inget CV. Vi hör av oss när vi hittar rätt åkeri för
+          din profil. Du bestämmer om du vill gå vidare.
         </p>
         <CTAButton />
         <p className="mt-5 text-blue-500 text-xs">
-          Dina uppgifter delas inte med tredje part. Du kan avregistrera dig
-          när som helst.
+          Din profil delas aldrig med ett åkeri utan ditt separata godkännande.
+          Du kan avregistrera dig när som helst.
         </p>
       </div>
     </section>
@@ -358,11 +399,39 @@ function FinalCTA() {
 }
 
 
+// ─── Structured data ──────────────────────────────────────────────────────────
+
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'DriverNord',
+  url: 'https://drivernord.com',
+  telephone: '+46709385267',
+  contactPoint: {
+    '@type': 'ContactPoint',
+    telephone: '+46709385267',
+    email: 'hej@drivernord.com',
+    contactType: 'customer service',
+    availableLanguage: ['Swedish', 'English'],
+  },
+  sameAs: ['https://www.facebook.com/profile.php?id=61589564897204'],
+};
+
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'DriverNord',
+  url: 'https://drivernord.com',
+};
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ChaufflorerPage() {
   return (
     <div className="min-h-screen flex flex-col">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }} />
+      <ViewContentTracker />
       <PublicHeader />
       <main className="flex-1">
         <Hero />
@@ -371,6 +440,7 @@ export default function ChaufflorerPage() {
         <HowItWorks />
         <BuiltForDrivers />
         <Comparison />
+        <LogistikklubbCTA />
         <FinalCTA />
       </main>
       <LegalFooter />

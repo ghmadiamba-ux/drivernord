@@ -6,6 +6,15 @@ export interface Warning {
   severity: 'warning' | 'error';
 }
 
+// Company name substrings that indicate test / simulation data.
+// Any open company_need whose company has one of these patterns in the name
+// is considered unsafe for real SMS contact.
+const SIMULATION_NAME_PATTERNS = ['SIMULATION', 'SIM-', 'Test', 'Probe', 'Auth Test'];
+
+export function isSimulationCompanyName(name: string): boolean {
+  return SIMULATION_NAME_PATTERNS.some((p) => name.includes(p));
+}
+
 export async function getSystemWarnings(): Promise<Warning[]> {
   const warnings: Warning[] = [];
   const now = Date.now();
@@ -90,6 +99,25 @@ export async function getSystemWarnings(): Promise<Warning[]> {
       warnings.push({
         type:     'failed_actions',
         message:  `${count} action${count === 1 ? '' : 's'} failed in the last 24 hours — retry required.`,
+        severity: 'error',
+      });
+    }
+  } catch { /* non-fatal */ }
+
+  // Simulation/test company data in open company_needs — SMS unsafe
+  // Uses need_type column (added by migration 015) to detect simulation open needs directly.
+  // This avoids a two-step company lookup that was returning false positives.
+  try {
+    const { count: simulationCount } = await db
+      .from('company_needs')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'open')
+      .in('need_type', ['simulation_only', 'archived_test']);
+
+    if ((simulationCount ?? 0) > 0) {
+      warnings.push({
+        type:     'simulation_data_in_company_needs',
+        message:  `${simulationCount} open company need${(simulationCount ?? 0) > 1 ? 's are' : ' is'} linked to simulation/test data. SMS contact automation is unsafe until these are removed.`,
         severity: 'error',
       });
     }

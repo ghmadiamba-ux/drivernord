@@ -14,6 +14,25 @@ export type Urgency = 'standard' | 'urgent' | 'emergency';
 // Matches company_needs.status CHECK in migration 003.
 export type CompanyNeedStatus = 'open' | 'closed';
 
+// Matches company_needs.need_type CHECK in migration 015.
+export type NeedType =
+  | 'active_public_need'
+  | 'matching_eligible'
+  | 'contact_ready_candidate'
+  | 'outreach_pending_approval'
+  | 'outreach_approved'
+  | 'contacted'
+  | 'expired'
+  | 'simulation_only'
+  | 'archived_test';
+
+// Need types that the matching engine is permitted to use.
+export const MATCHABLE_NEED_TYPES: readonly NeedType[] = [
+  'active_public_need',
+  'matching_eligible',
+  'contact_ready_candidate',
+];
+
 // Persisted company record — shape returned from the companies table.
 export interface Company {
   id:         string;

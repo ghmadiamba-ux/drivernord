@@ -31,6 +31,10 @@
     {
       "path": "/api/cron/logistikklubb-daily-notify",
       "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cron/content-facebook-publisher",
+      "schedule": "0 9 * * *"
     }
   ]
 }

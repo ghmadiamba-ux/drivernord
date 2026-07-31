@@ -27,6 +27,7 @@ export interface IngestedDriver {
   needsFollowUp: boolean;
   followUpAt: Date | null;
   followUpReason: FollowUpReason | null;
+  openToBemanning: boolean | null;
 }
 
 export type IngestedDriverError =
@@ -80,6 +81,7 @@ export function buildIngestedDriver(profile: DriverProfile): IngestedDriverResul
       needsFollowUp: profile.readiness.needsFollowUp,
       followUpAt: profile.readiness.followUpAt,
       followUpReason: profile.readiness.followUpReason,
+      openToBemanning: profile.openToBemanning,
     },
   };
 }

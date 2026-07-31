@@ -11,23 +11,26 @@ import type {
 // Mirrors the ingested_drivers table (migration 004).
 // All columns are typed as they arrive from Supabase (snake_case, dates as strings).
 interface IngestedDriverRow {
-  id:                  string;
-  ingested_at:         string;
-  priority:            LeadPriority;
-  license:             License;
-  ykb:                 Ykb;
-  driver_card:         DriverCard;
-  region:              Region;
-  willing_to_relocate: boolean | null;
-  availability:        Availability;
-  domain:              Domain | null;
-  shift_preference:    ShiftPreference | null;
-  first_name:          string;
-  phone:               string;
-  email:               string | null;
-  needs_follow_up:     boolean;
-  follow_up_at:        string | null;
-  follow_up_reason:    FollowUpReason | null;
+  id:                   string;
+  ingested_at:          string;
+  priority:             LeadPriority;
+  license:              License;
+  ykb:                  Ykb;
+  driver_card:          DriverCard;
+  region:               Region;
+  willing_to_relocate:  boolean | null;
+  availability:         Availability;
+  domain:               Domain | null;
+  shift_preference:     ShiftPreference | null;
+  first_name:           string;
+  phone:                string;
+  email:                string | null;
+  needs_follow_up:      boolean;
+  follow_up_at:         string | null;
+  follow_up_reason:     FollowUpReason | null;
+  simulation:           boolean;
+  open_to_bemanning:    boolean | null;
+  bemanning_consent_at: string | null;
 }
 
 // ─── Timestamp helpers ────────────────────────────────────────────────────────
@@ -67,9 +70,10 @@ function ingestedDriverFromRow(row: IngestedDriverRow): IngestedDriver {
       phone:     row.phone,
       email:     row.email,
     },
-    needsFollowUp:  row.needs_follow_up,
-    followUpAt:     toNullableDate(row.follow_up_at, 'follow_up_at'),
-    followUpReason: row.follow_up_reason,
+    needsFollowUp:   row.needs_follow_up,
+    followUpAt:      toNullableDate(row.follow_up_at, 'follow_up_at'),
+    followUpReason:  row.follow_up_reason,
+    openToBemanning: row.open_to_bemanning ?? null,
   };
 }
 
@@ -92,9 +96,10 @@ export async function createIngestedDriver(driver: IngestedDriver): Promise<void
       first_name:          driver.contact.firstName,
       phone:               driver.contact.phone,
       email:               driver.contact.email,
-      needs_follow_up:     driver.needsFollowUp,
-      follow_up_at:        driver.followUpAt?.toISOString() ?? null,
-      follow_up_reason:    driver.followUpReason,
+      needs_follow_up:      driver.needsFollowUp,
+      follow_up_at:         driver.followUpAt?.toISOString() ?? null,
+      follow_up_reason:     driver.followUpReason,
+      open_to_bemanning:    driver.openToBemanning,
     },
     { onConflict: 'id', ignoreDuplicates: true },
   );
@@ -102,10 +107,26 @@ export async function createIngestedDriver(driver: IngestedDriver): Promise<void
   if (error) throw new Error(`ingestedDriverStore.createIngestedDriver failed: ${error.message}`);
 }
 
+// Returns the first ingested driver with this exact phone, or null if none.
+export async function findIngestedDriverByPhone(phone: string): Promise<IngestedDriver | null> {
+  const { data, error } = await db
+    .from('ingested_drivers')
+    .select('*')
+    .eq('phone', phone)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw new Error(`ingestedDriverStore.findByPhone failed: ${error.message}`);
+  if (!data) return null;
+
+  return ingestedDriverFromRow(data as IngestedDriverRow);
+}
+
 export async function getActiveIngestedDrivers(): Promise<IngestedDriver[]> {
   const { data, error } = await db
     .from('ingested_drivers')
-    .select('*');
+    .select('*')
+    .eq('simulation', false);
 
   if (error) throw new Error(`ingestedDriverStore.getActiveIngestedDrivers failed: ${error.message}`);
   if (!data)  return [];

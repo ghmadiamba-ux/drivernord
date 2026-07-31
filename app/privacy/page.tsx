@@ -6,7 +6,20 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://drivernord.com'),
   title: 'Integritetspolicy — DriverNord',
   description:
-    'Hur DriverNord samlar in, använder och skyddar dina personuppgifter.',
+    'Hur DriverNord samlar in, använder och skyddar dina personuppgifter. GDPR-rättigheter, cookieanvändning och hantering av chaufförsprofiler förklaras här.',
+  openGraph: {
+    title: 'Integritetspolicy — DriverNord',
+    description: 'Hur DriverNord samlar in, använder och skyddar dina personuppgifter i enlighet med GDPR.',
+    url: 'https://drivernord.com/privacy',
+    siteName: 'DriverNord',
+    locale: 'sv_SE',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Integritetspolicy — DriverNord',
+    description: 'Hur DriverNord samlar in, använder och skyddar dina personuppgifter i enlighet med GDPR.',
+  },
 };
 
 const SECTIONS = [
@@ -36,11 +49,11 @@ const SECTIONS = [
   },
   {
     heading: '7. Tredjeparter',
-    body: 'Dina uppgifter delas inte med tredje part utanför matchningssyftet. Inga uppgifter säljs. Teknisk infrastruktur (databas, hosting) levereras av externa leverantörer inom EU/EES eller med adekvata skyddsåtgärder.',
+    body: 'Dina profiluppgifter (körkortsklass, region, tillgänglighet) delas med transportföretag i matchningssyfte. Inga uppgifter säljs. Om du godkänner marknadsföringscookies används Meta Pixel (Meta Platforms Ireland Ltd) för att mäta effekten av vår marknadsföring — inga personuppgifter från din chaufförsprofil skickas till Meta. Teknisk infrastruktur levereras av externa leverantörer inom EU/EES eller med adekvata skyddsåtgärder.',
   },
   {
-    heading: '8. Cookies',
-    body: 'Vi använder ett minimum av cookies. Se vår cookiepolicy på /cookies för detaljer.',
+    heading: '8. Cookies och spårning',
+    body: 'Vi frågar om ditt samtycke innan vi använder icke-nödvändiga cookies. Nödvändiga cookies krävs för att tjänsten ska fungera. Om du godkänner marknadsföringscookies via vår cookiebanner används Meta Pixel — ett spårningsverktyg från Meta Platforms Ireland Ltd (Facebook/Instagram) — för att mäta hur vår marknadsföring fungerar. Meta Pixel registrerar besök och händelser på vår webbplats och skickar dessa som anonyma mätdata till Meta. Ditt namn, telefonnummer eller e-postadress skickas inte till Meta. Du kan när som helst ändra dina cookieinställningar via länken "Hantera cookieinställningar" i sidfoten. Se även /cookies för detaljer.',
   },
   {
     heading: '9. Ändringar',
