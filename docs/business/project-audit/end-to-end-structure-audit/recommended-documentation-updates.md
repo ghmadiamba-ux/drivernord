@@ -217,7 +217,7 @@
 
 ### P3-03: Add CLAUDE.md Note for Migration Directory Canonicality
 
-**Issue:** The CLAUDE.md (in `agent-1/`) does not clarify which of the two migration directories is canonical.
+**Issue:** The CLAUDE.md (in the project root) does not clarify which of the two migration directories is canonical.
 **Action:** Add a note to CLAUDE.md: "The canonical migration directory is `/supabase/migrations/` (Supabase CLI timestamp naming). The `/migrations/` directory is a human-readable reference only. Never run migrations from both directories."
 **Who:** Claude Code.
 **Effort:** 5 minutes.

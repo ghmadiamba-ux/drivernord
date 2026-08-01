@@ -18,7 +18,7 @@
 | `legal-review-brief-for-lawyer.md` | One-document brief for the Swedish lawyer; describes DriverNord, the products, the documents, and 10 specific legal questions requiring judgment | Swedish | Ready to send once founder reviews and adds contact details |
 | `legal-readiness-summary.md` | This file — summary of the package, what remains unresolved, and go/no-go table | English | Complete |
 
-All files are located at: `agent-1/docs/business/legal/`
+All files are located at: `docs/business/legal/`
 
 ---
 

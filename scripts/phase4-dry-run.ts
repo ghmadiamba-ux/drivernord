@@ -6,7 +6,7 @@
 // Library V1 (lib/content/provenReferences.ts + lib/content/creativeMechanism.ts).
 // All cards tagged created_by='dry_run_phase4_proven_reference_2026_W28'.
 //
-// Run from agent-1/:  npx tsx scripts/phase4-dry-run.ts
+// Run from the project root: npx tsx scripts/phase4-dry-run.ts
 //
 // SAFETY GUARANTEES:
 //   ✗ No Facebook connection / no external API call

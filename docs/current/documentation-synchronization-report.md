@@ -39,7 +39,7 @@
 - `strategic-conclusion.md`
 
 ### Supporting files
-- `agent-1/CLAUDE.md`
+- `CLAUDE.md` (project root)
 - Memory files at `c:\Users\Adam8\.claude\projects\c--Users-Adam8-driver--acquisition-agent\memory\`
 
 ---

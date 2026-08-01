@@ -160,7 +160,7 @@ creative-bank/
 
 ### #10 — Install `@anthropic-ai/sdk`
 **Who:** Claude Code (with founder confirmation)
-**What:** Run `npm install @anthropic-ai/sdk` in `agent-1/`. Add `ANTHROPIC_API_KEY` to `.env.local.example` (empty value). Confirm the API key exists in the founder's environment.
+**What:** Run `npm install @anthropic-ai/sdk` in the project root. Add `ANTHROPIC_API_KEY` to `.env.local.example` (empty value). Confirm the API key exists in the founder's environment.
 **Why now:** No agent code can be written until the SDK is installed. This is a one-line fix that unblocks the entire agentic system implementation.
 **Effort:** 5 minutes (Claude Code).
 

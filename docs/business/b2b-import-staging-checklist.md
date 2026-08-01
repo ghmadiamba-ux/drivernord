@@ -37,7 +37,7 @@ migrations staged. `.env.local.supabase-local` already contains the default loca
 The only remaining step is starting Docker and the local containers:
 
 ```bash
-# From agent-1/  (supabase init already done — skip it)
+# From the project root (supabase init already done — skip it)
 supabase start         # pulls images and starts local containers (~1–2 min first run)
 supabase db push --local   # applies all 12 staged migrations
 ```
@@ -60,7 +60,7 @@ in `.env.local.staging`. Never use the same project reference as production.
 **Confirm the staging project reference is different from production:**
 
 ```bash
-# Both commands run from agent-1/
+# Both commands run from the project root
 grep SUPABASE_URL .env.local          # production — must NOT use this
 grep SUPABASE_URL .env.local.staging  # staging — use this for import
 ```
@@ -74,7 +74,7 @@ The two `SUPABASE_URL` values must be different project refs. If they match, sto
 The CSV has been pre-validated. Run dry-run one more time to confirm no regressions:
 
 ```bash
-cd agent-1/
+cd C:\PROJECT\DriverNord
 npx tsx scripts/import-b2b-targets.ts
 ```
 
@@ -106,11 +106,11 @@ Run this before every database operation:
 
 ```bash
 # Print the SUPABASE_URL from staging env (value should be localhost or a staging project ref)
-grep SUPABASE_URL agent-1/.env.local.staging
+grep SUPABASE_URL .env.local.staging
 
 # Compare against production (these two lines must NOT produce the same URL)
-grep SUPABASE_URL agent-1/.env.local
-grep SUPABASE_URL agent-1/.env.local.staging
+grep SUPABASE_URL .env.local
+grep SUPABASE_URL .env.local.staging
 ```
 
 If the URLs are identical: **stop, do not proceed**.
@@ -138,7 +138,7 @@ Supabase CLI manages migrations from `supabase/migrations/`. Copy or symlink the
 then push:
 
 ```bash
-cd agent-1/
+cd C:\PROJECT\DriverNord
 mkdir -p supabase/migrations
 cp migrations/001_*.sql supabase/migrations/
 # ... repeat for all 12 migrations in numbered order
@@ -186,10 +186,10 @@ WHERE table_schema = 'public'
 
 ```bash
 # Back up production env (do not delete it)
-cp agent-1/.env.local agent-1/.env.local.production.bak
+cp .env.local .env.local.production.bak
 
 # Activate local env
-cp agent-1/.env.local.supabase-local agent-1/.env.local
+cp .env.local.supabase-local .env.local
 ```
 
 After import is complete, restore production env (Step 7).
@@ -201,7 +201,7 @@ After import is complete, restore production env (Step 7).
 Confirm the script still reads correctly with staging credentials loaded:
 
 ```bash
-cd agent-1/
+cd C:\PROJECT\DriverNord
 npx tsx scripts/import-b2b-targets.ts
 ```
 
@@ -216,7 +216,7 @@ If this prints DB errors, stop — the staging DB is not correctly configured.
 ⛔ Only after all checks above pass:
 
 ```bash
-cd agent-1/
+cd C:\PROJECT\DriverNord
 B2B_IMPORT_CONFIRM=true npx tsx scripts/import-b2b-targets.ts
 ```
 
@@ -266,7 +266,7 @@ SELECT COUNT(*) FROM company_needs;     -- should be 0 (or unchanged from before
 Start the dev server against the staging env:
 
 ```bash
-cd agent-1/
+cd C:\PROJECT\DriverNord
 npm run dev
 ```
 
@@ -311,13 +311,13 @@ Open `http://localhost:3000/recruiter` in a browser.
 ## Step 10 — Restore production env
 
 ```bash
-cp agent-1/.env.local.production.bak agent-1/.env.local
+cp .env.local.production.bak .env.local
 ```
 
 Confirm restored:
 
 ```bash
-grep SUPABASE_URL agent-1/.env.local | grep -o "supabase\.co"
+grep SUPABASE_URL .env.local | grep -o "supabase\.co"
 # Expected: supabase.co
 ```
 
@@ -382,7 +382,7 @@ supabase db reset --local   # drops and re-applies all migrations; all data clea
 
 **Minimum action to unblock import (single prerequisite remaining):**
 
-Install Docker Desktop, then run exactly these commands from `agent-1/`:
+Install Docker Desktop, then run exactly these commands from the project root:
 
 ```bash
 # 1. Start local Supabase (uses the pre-staged supabase/ config and migrations)

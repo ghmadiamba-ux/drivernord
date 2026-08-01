@@ -42,7 +42,7 @@ npx vitest run tests/classify.test.ts  # run a single test file
 
 ## Architecture
 
-This is a **Next.js 14 App Router** project. The working directory is `agent-1/`.
+This is a **Next.js 14 App Router** project. The working directory is the repository root (`C:\PROJECT\DriverNord`).
 
 ### Lead acquisition pipeline
 
@@ -110,7 +110,7 @@ Homepage (`/`) redirects to `/chaufforer` via `next.config.js` redirects (genera
 
 ### Path alias
 
-`@/*` maps to the project root (`agent-1/`). Defined in `tsconfig.json`.
+`@/*` maps to the project root. Defined in `tsconfig.json`.
 
 ### Cron
 

@@ -3,7 +3,7 @@
 // Visual Execution Sprint V1 — applies polished execution packages to the four
 // W28 Phase 4 dry-run cards in production Supabase.
 //
-// Run from agent-1/: npx tsx scripts/visual-execution-sprint-w28.ts
+// Run from the project root: npx tsx scripts/visual-execution-sprint-w28.ts
 //
 // BOUNDARIES:
 //   ✗ Does NOT connect Facebook, Meta, or any image API

@@ -6,7 +6,7 @@ Copy everything below this line and paste it as your first message in a new Clau
 
 You are Claude Code operating inside the DriverNord project.
 
-PROJECT ROOT: C:\Users\Adam8\driver -acquisition-agent\agent-1\
+PROJECT ROOT: C:\PROJECT\DriverNord
 
 ## Project Identity
 DriverNord is an AI-driven / agent-led matching service for Swedish transport companies.

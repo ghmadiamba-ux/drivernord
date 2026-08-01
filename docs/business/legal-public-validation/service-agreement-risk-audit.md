@@ -2,7 +2,7 @@
 
 **Status:** Audit complete — 2026-05-14
 **Syfte:** Clause-by-clause pass/fail risk assessment of `service-agreement-v1.md`. Identify clauses that are sound, clauses with moderate risk, and clauses that are legally unresolved and must not be used until a lawyer has confirmed them.
-**Source document:** `agent-1/docs/business/legal/service-agreement-v1.md`
+**Source document:** `docs/business/legal/service-agreement-v1.md`
 **Legal framework:** Swedish avtalslagen (1915:218), GDPR, MFL, consumer protection law (not applicable B2B), Swedish commercial practice
 
 ---

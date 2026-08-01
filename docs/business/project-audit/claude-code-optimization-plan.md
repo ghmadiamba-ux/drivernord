@@ -150,7 +150,7 @@ When the B2B pipeline (6 agents, 5 tables) is ready to be built:
 ## 4. Folder Structure for Claude Code Sessions
 
 ```
-agent-1/
+DriverNord/ (project root, C:\PROJECT\DriverNord)
 ├── docs/
 │   ├── business/
 │   │   ├── market-entry-research/
@@ -212,7 +212,7 @@ Governing constraints: Public data only. Do not contact any person or company. D
 
 ```
 You are a senior TypeScript/PostgreSQL developer working on DriverNord.
-Working directory: agent-1/
+Working directory: project root (C:\PROJECT\DriverNord)
 
 Current task: Write a migration SQL file for [NEW TABLE/CHANGE].
 
@@ -237,7 +237,7 @@ Output: The complete migration SQL file content. Do not write the file — outpu
 
 ```
 You are a senior TypeScript developer working on DriverNord.
-Working directory: agent-1/
+Working directory: project root (C:\PROJECT\DriverNord)
 
 Current task: Write a specification for [AGENT NAME] agent.
 

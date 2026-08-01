@@ -6,7 +6,7 @@
 // Generates sequential visual plans with live visual history from DB.
 // All cards tagged created_by='dry_run_phase3_2026_W27'.
 //
-// Run from agent-1/:  npx tsx scripts/phase3-dry-run.ts
+// Run from the project root: npx tsx scripts/phase3-dry-run.ts
 //
 // SAFETY GUARANTEES:
 //   ✗ No Facebook connection / no external API call

@@ -31,7 +31,7 @@ The architecture reflects this: agents run autonomously, humans observe via the 
 ## Project Layout
 
 ```
-agent-1/
+DriverNord/                  # project root (C:\PROJECT\DriverNord)
 ├── app/                     # Next.js App Router pages and API routes
 │   ├── page.tsx             # Root → redirects to /chaufforer
 │   ├── layout.tsx           # Root layout (font, viewport meta, metadataBase)
@@ -264,4 +264,4 @@ All domain enums and types in `types/lead.ts`: `License`, `Ykb`, `Availability`,
 
 ## Path Alias
 
-`@/*` maps to the project root (`agent-1/`). Defined in `tsconfig.json`.
+`@/*` maps to the project root. Defined in `tsconfig.json`.

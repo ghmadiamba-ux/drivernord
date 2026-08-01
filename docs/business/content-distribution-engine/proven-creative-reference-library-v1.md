@@ -221,7 +221,7 @@ Mechanism display appears in the **Visuell plan** section of each expanded CardR
 Run a second internal four-post weekly dry-run using the upgraded proven-reference-aware pipeline to validate that mechanism selection works end-to-end in the script context.
 
 ```bash
-npx tsx agent-1/scripts/phase3-dry-run.ts
+npx tsx scripts/phase3-dry-run.ts
 ```
 
 Verify that each of the 4 cards receives a `reference_mechanism_id` and `creative_mode` in their visual plan output.

@@ -31,7 +31,7 @@ Claude Code maximizes AI leverage at every step. Every task should begin with: "
 - Generate operator runbooks, product sheets, commercial briefs, and campaign plans
 
 ### Code
-- Write and modify application code in `agent-1/` when explicitly authorized
+- Write and modify application code in the project root (`C:\PROJECT\DriverNord`) when explicitly authorized
 - Implement engineering tasks from the roadmap (rate limiting, failure logging, deletion endpoint, etc.)
 - Write and run tests against the local environment
 - Read and audit code for security, correctness, and consistency

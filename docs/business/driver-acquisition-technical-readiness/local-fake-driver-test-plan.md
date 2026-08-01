@@ -23,9 +23,9 @@ Confirm that:
 
 Before running this test:
 
-- [ ] Local Supabase is running: `supabase start` (from `agent-1/`)
+- [ ] Local Supabase is running: `supabase start` (from the project root)
 - [ ] Verify `SUPABASE_URL` contains `127.0.0.1` — STOP if it contains `supabase.co`
-- [ ] Local dev server is running: `npm run dev` (from `agent-1/`)
+- [ ] Local dev server is running: `npm run dev` (from the project root)
 - [ ] Migration 013 has been applied to local DB: `psql $LOCAL_DB_URL < migrations/013_add_consent_and_attribution_to_drivers.sql`
 - [ ] No previous test leads are contaminating the results (run cleanup SQL below if needed)
 

@@ -11,7 +11,7 @@ The DriverNord project uses two distinct documentation systems:
 
 | System | Location | Purpose |
 |--------|----------|---------|
-| **Git repository** (`docs/`) | `agent-1/docs/` | Technical documentation, architecture specs, audit reports, agent designs — everything that Claude Code reads and writes |
+| **Git repository** (`docs/`) | `docs/` (project root, `C:\PROJECT\DriverNord`) | Technical documentation, architecture specs, audit reports, agent designs — everything that Claude Code reads and writes |
 | **Google Drive** | `DriverNord/` root folder | Operational business documents, legal files awaiting review, financial records, founder-facing checklists, external communications |
 
 **Rule:** Sensitive documents (contracts, signed DPAs, invoices, personal data) go in Google Drive only. They must never be committed to the git repository. Technical specs and agent designs go in git only — they do not need to be in Drive.

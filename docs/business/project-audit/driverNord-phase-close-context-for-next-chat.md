@@ -35,8 +35,10 @@ Paste this file or its contents at the start of any new Claude Code session to r
 ## Project Root
 
 ```
-C:\Users\Adam8\driver -acquisition-agent\agent-1\
+C:\PROJECT\DriverNord
 ```
+
+(Historical note: this project previously lived at `C:\Users\Adam8\driver -acquisition-agent\agent-1\`, now a backup-only location — see `docs/architecture/current-working-root.md`.)
 
 ---
 
@@ -216,4 +218,4 @@ Paste one of these to continue:
 > "A reply was received from [company]. Here is the text: [paste text]. Classify the intent and propose a response draft."
 
 **To run Batch 2 after approval:**
-> Open terminal: `cd "C:\Users\Adam8\driver -acquisition-agent\agent-1"` then: `py scripts/contact_agent_smtp_runner.py --run --limit 2`
+> Open terminal: `cd "C:\PROJECT\DriverNord"` then: `py scripts/contact_agent_smtp_runner.py --run --limit 2`

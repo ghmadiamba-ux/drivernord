@@ -1,4 +1,6 @@
 > **SUPERSEDED** — Historical record only. See `docs/business/project-audit/end-to-end-structure-audit/` for the current audit (2026-05-16).
+>
+> **Path note (2026-08-01):** file paths below reference the old working root (`c:\Users\Adam8\driver -acquisition-agent\agent-1\...`), accurate as of this audit's date. The project now lives at `C:\PROJECT\DriverNord` — see `docs/architecture/current-working-root.md`. Left unchanged below to preserve the historical record.
 
 # DriverNord — Project Audit v2
 *Date: 2026-05-06*
