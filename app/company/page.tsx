@@ -1,26 +1,25 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import Link from 'next/link';
 import { PublicHeader } from '@/components/PublicHeader';
 import { LegalFooter } from '@/components/LegalFooter';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://drivernord.com'),
-  title: 'Hitta CE-chaufförer i Stockholm — DriverNord för transportföretag',
+  title: 'Bemanning för transport, lager och logistik i Stockholm/Mälardalen — DriverNord Bemanning',
   description:
-    'DriverNord kvalificerar CE-, C- och D-chaufförer med giltig YKB i Stockholm och Mälardalen. Transportföretag får ett strukturerat underlag och direktkontakt — utan bemanningsavgifter.',
+    'DriverNord Bemanning hjälper transport-, lager- och logistikföretag i Stockholm/Mälardalen att snabbt täcka tillfälliga personalbehov med kontrollerade och uppdragsklara medarbetare — lagerarbetare, truckförare och C/CE-förare.',
   openGraph: {
-    title:       'Hitta CE-chaufförer i Stockholm — DriverNord för transportföretag',
-    description: 'DriverNord kvalificerar CE-, C- och D-chaufförer med giltig YKB. Strukturerat underlag och direktkontakt — utan bemanningsavgifter.',
+    title:       'Bemanning för transport, lager och logistik — DriverNord Bemanning',
+    description: 'DriverNord Bemanning hjälper företag att täcka tillfälliga personalbehov inom lager, terminal och transport.',
     url:         'https://drivernord.com/company',
-    siteName:    'DriverNord',
+    siteName:    'DriverNord Bemanning',
     locale:      'sv_SE',
     type:        'website',
   },
   twitter: {
     card:        'summary_large_image',
-    title:       'Hitta CE-chaufförer i Stockholm — DriverNord för transportföretag',
-    description: 'DriverNord kvalificerar CE-, C- och D-chaufförer med giltig YKB. Strukturerat underlag och direktkontakt — utan bemanningsavgifter.',
+    title:       'Bemanning för transport, lager och logistik — DriverNord Bemanning',
+    description: 'DriverNord Bemanning hjälper företag att täcka tillfälliga personalbehov inom lager, terminal och transport.',
   },
 };
 
@@ -74,18 +73,19 @@ function Hero() {
           {/* Text column */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-blue-400 mb-5">
-              För transportföretag
+              För transport-, lager- och logistikföretag
             </p>
             <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-6">
-              Hitta kvalificerade chaufförer snabbare.
+              Hitta rätt bemanning snabbare.
             </h1>
             <p className="text-blue-200 text-base md:text-lg leading-relaxed mb-8 max-w-xl">
-              DriverNord samlar in och kvalificerar chaufförsprofiler med rätt körkort, YKB och
-              tillgänglighet. Du får ett strukturerat underlag — redo för kontakt.
+              DriverNord Bemanning hjälper er att täcka tillfälliga personalbehov inom
+              lager, terminal och transport — med kontrollerade och uppdragsklara medarbetare,
+              från lagerarbetare och truckförare till C/CE-förare.
             </p>
-            <PrimaryButton href="mailto:hej@drivernord.com" label="Kom igång — kontakta oss" />
+            <PrimaryButton href="mailto:hej@drivernord.com?subject=Bemanningsbehov" label="Beskriv ert bemanningsbehov" />
             <p className="mt-4 text-blue-400 text-sm">
-              Inget abonnemang. Vi pratar om dina behov och sätter upp ett flöde.
+              Inget abonnemang. Vi pratar om era behov och sätter upp ett flöde.
             </p>
           </div>
 
@@ -94,7 +94,7 @@ function Hero() {
             <div className="relative rounded-2xl overflow-hidden bg-blue-800/50 aspect-[4/3] max-w-lg ml-auto">
               <Image
                 src="/images/company-hero.jpg"
-                alt="Transportansvarig granskar chaufförsmatchning och ruttplanering i DriverNord"
+                alt="Transportansvarig granskar bemanningsbehov och ruttplanering hos DriverNord Bemanning"
                 fill
                 className="object-cover object-center"
                 priority
@@ -113,10 +113,10 @@ function Hero() {
 // ─── Trust strip ──────────────────────────────────────────────────────────────
 
 const TRUST_ITEMS = [
-  { stat: 'C / CE / D', label: 'Körkortsklass i fokus' },
-  { stat: 'YKB-klassad', label: 'Giltig, pågående eller förfallen' },
-  { stat: '~2 min', label: 'Chaufförsintag per profil' },
-  { stat: 'Cockpit', label: 'Strukturerad rekryteringsöversikt' },
+  { stat: 'Lager + transport', label: 'i samma flöde' },
+  { stat: 'Korta uppdrag', label: 'inga långa kontrakt krävs' },
+  { stat: 'Dokumentkontroll', label: 'innan uppdrag föreslås' },
+  { stat: 'En kontaktperson', label: 'hela vägen' },
 ];
 
 function TrustStrip() {
@@ -143,18 +143,18 @@ function TrustStrip() {
 const HOW_STEPS = [
   {
     n: '1',
-    title: 'Vi tar in chaufförsprofilerna',
-    body: 'Chaufförer registrerar sig via en mobilanpassad flödesintervju. Vi samlar körkortsklass, YKB-status, förarkort, tillgänglighet och region.',
+    title: 'Ni beskriver behovet',
+    body: 'Roll, antal, ort, tidsperiod och krav (behörighet, truckkort, YKB, ADR med mera). Vi ställer de frågor som faktiskt avgör vem som passar.',
   },
   {
     n: '2',
-    title: 'Profilerna kvalificeras automatiskt',
-    body: 'Varje profil klassificeras efter körkort, YKB och tillgänglighet. Du ser direkt vilka som är redo för kontakt — utan att manuellt läsa ansökningar.',
+    title: 'Vi matchar mot poolen',
+    body: 'Vi kontrollerar tillgänglighet och relevanta dokument innan en medarbetare föreslås — inte efteråt.',
   },
   {
     n: '3',
-    title: 'Du kontaktar rätt kandidater',
-    body: 'Via cockpit-översikten ser du filtrerade profiler. Du väljer vem du vill kontakta och hör av dig direkt — inga mellanhänder.',
+    title: 'Uppdraget startar',
+    body: 'Ni får en tydlig start och en kontaktperson under hela uppdraget — inte bara vid leverans.',
   },
 ];
 
@@ -164,7 +164,7 @@ function HowItWorks() {
       <div className="max-w-5xl mx-auto px-5 py-20 md:py-24">
         <Eyebrow>Hur det fungerar</Eyebrow>
         <h2 className="text-2xl md:text-3xl font-bold text-blue-900 mb-12">
-          Från chaufförsintag till kvalificerat underlag.
+          Från behov till bemannat uppdrag.
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
           {HOW_STEPS.map((step, i) => (
@@ -187,37 +187,43 @@ function HowItWorks() {
   );
 }
 
-// ─── Driver categories ────────────────────────────────────────────────────────
+// ─── Service lines ────────────────────────────────────────────────────────────
 
-const DRIVER_CATEGORIES = [
-  { label: 'CE-chaufförer', detail: 'Drag + släp, lång- och regionaltransport' },
-  { label: 'Distributionstransport', detail: 'C-körkort, tätortskörning, morgon- och kvällsturer' },
-  { label: 'Fjärrtransport', detail: 'Körtidsregler, nattkörning, YKB-krav' },
-  { label: 'Kyltransport', detail: 'ADR-märkning, temperaturlogg, livsmedelsregler' },
-  { label: 'Schakt & bygg', detail: 'CE tipp, terrängkörning, anläggningsprofil' },
-  { label: 'Budtransport', detail: 'B eller C, snabbhet, stadsnavigation' },
+const SERVICE_LINES = [
+  {
+    title: 'Lagerbemanning',
+    detail: 'Lagerarbetare, terminalpersonal, orderplockare, truckförare, packning och lastning/lossning.',
+  },
+  {
+    title: 'Förarbemanning',
+    detail: 'C- och CE-förare för distribution, fjärrtransport, schakt/bygg och andra transportuppdrag där rätt behörighet finns.',
+  },
+  {
+    title: 'Logistikbemanning',
+    detail: 'Personal för enklare logistikstöd, flödesnära arbetsuppgifter och framtida operativa roller inom transport och lager.',
+  },
 ];
 
-function DriverCategories() {
+function ServiceLines() {
   return (
     <section className="bg-blue-50">
       <div className="max-w-5xl mx-auto px-5 py-20 md:py-24">
         <Eyebrow>Vad vi täcker</Eyebrow>
         <h2 className="text-2xl md:text-3xl font-bold text-blue-900 mb-4">
-          Chaufförer för hela transportspektrat.
+          Våra bemanningsområden.
         </h2>
         <p className="text-gray-600 text-base leading-relaxed mb-10 max-w-xl">
-          DriverNord fokuserar på tunga transporter och yrkestrafik. Vi kvalificerar mot
-          de faktorer som faktiskt avgör om en chaufför passar ett uppdrag.
+          DriverNord Bemanning täcker hela flödet — inte bara ett enskilt yrke. Rätt profil
+          kontrolleras mot era faktiska krav innan den föreslås.
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {DRIVER_CATEGORIES.map((cat) => (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {SERVICE_LINES.map((line) => (
             <div
-              key={cat.label}
+              key={line.title}
               className="bg-white rounded-lg border border-blue-100 px-5 py-4"
             >
-              <p className="text-blue-900 font-semibold text-sm mb-1">{cat.label}</p>
-              <p className="text-gray-500 text-xs leading-snug">{cat.detail}</p>
+              <p className="text-blue-900 font-semibold text-sm mb-1">{line.title}</p>
+              <p className="text-gray-500 text-xs leading-snug">{line.detail}</p>
             </div>
           ))}
         </div>
@@ -226,23 +232,22 @@ function DriverCategories() {
   );
 }
 
-// ─── Why DriverNord ───────────────────────────────────────────────────────────
+// ─── Why DriverNord Bemanning ─────────────────────────────────────────────────
 
 const WHY_ITEMS = [
-  'Du slipper granska ostrukturerade CV:n — varje profil är standardiserad.',
-  'Du ser YKB-status direkt. Giltigt, pågående eller förfallet — inga gissningar.',
-  'Tillgänglighet är inbyggd i profilen. Du vet när chaufförer kan börja.',
-  'Inga mellanhänder. Du kontaktar kandidaterna direkt via deras telefonnummer.',
-  'Cockpit-översikten låter dig filtrera och prioritera utan att byta verktyg.',
+  'En kontaktperson för hela flödet — lager, terminal och transport, inte flera leverantörer.',
+  'Kompetens, tillgänglighet och relevanta dokument kontrolleras innan en medarbetare föreslås.',
+  'Vi prioriterar korta och akuta uppdrag som andra bemanningsbolag ofta lägger lågt.',
+  'Ingen lång rekryteringsprocess — ni beskriver behovet, vi återkommer med ett konkret förslag.',
 ];
 
 function WhyDriverNord() {
   return (
     <section className="bg-white">
       <div className="max-w-5xl mx-auto px-5 py-20 md:py-24">
-        <Eyebrow>Varför DriverNord</Eyebrow>
+        <Eyebrow>Varför DriverNord Bemanning</Eyebrow>
         <h2 className="text-2xl md:text-3xl font-bold text-blue-900 mb-10">
-          Strukturerat underlag. Direkt kontakt.
+          Kontrollerad bemanning. Ett flöde.
         </h2>
         <ul className="space-y-4 max-w-2xl">
           {WHY_ITEMS.map((item) => (
@@ -269,7 +274,7 @@ function TrustVisual() {
           <div className="relative rounded-2xl overflow-hidden bg-blue-50 aspect-[4/3]">
             <Image
               src="/images/company-trust.jpg"
-              alt="DriverNord-representanter diskuterar transportbehov i svensk logistikmiljö"
+              alt="DriverNord Bemanning-representanter diskuterar personalbehov i svensk logistikmiljö"
               fill
               className="object-cover object-center"
               sizes="(max-width: 768px) 100vw, 50vw"
@@ -281,13 +286,13 @@ function TrustVisual() {
           <div>
             <Eyebrow>Direkt och transparent</Eyebrow>
             <h2 className="text-2xl md:text-3xl font-bold text-blue-900 mb-6">
-              Inga mellanhänder. Direktkontakt med rätt kandidat.
+              Tydligt ansvar. En kontaktperson.
             </h2>
             <ul className="space-y-4">
               {[
-                'Varje profil är standardiserad — du ser exakt vad du behöver veta.',
-                'Du kontaktar kandidaterna direkt. Inga agenter, inga dolda avgifter.',
-                'Vi jobbar med tunga transporter — CE, C och D med giltig YKB.',
+                'Ni har en kontaktperson hos DriverNord Bemanning genom hela uppdraget.',
+                'Inga dolda avgifter — vi är tydliga med upplägg och kostnad innan uppdraget startar.',
+                'Vi täcker både lager/terminal och tunga transporter — CE, C och D med giltig YKB.',
               ].map((point) => (
                 <li key={point} className="flex items-start gap-3">
                   <CheckIcon />
@@ -306,12 +311,12 @@ function TrustVisual() {
 // ─── Operational process ──────────────────────────────────────────────────────
 
 const PROCESS_STEPS = [
-  { n: '1', title: 'Kontakt', body: 'Vi pratar om dina behov — volym, körkortsklass, region, tidshorisont.' },
-  { n: '2', title: 'Upplägg', body: 'Vi sätter upp ett intag anpassat till din organisation och dina volymer.' },
-  { n: '3', title: 'Flödet startar', body: 'Chaufförer registrerar sig via mobilanpassad intervju. Profilering sker löpande.' },
-  { n: '4', title: 'Kvalificering', body: 'Varje profil klassificeras. Prioritet sätts baserat på körkort, YKB och tillgänglighet.' },
-  { n: '5', title: 'Du tar del av underlaget', body: 'Via cockpit-översikten ser du kvalificerade profiler, filtrerade efter dina kriterier.' },
-  { n: '6', title: 'Direktkontakt', body: 'Du väljer kandidater och hör av dig direkt. Vi är inte i vägen när du rekryterar.' },
+  { n: '1', title: 'Kontakt', body: 'Vi pratar om era behov — roll, volym, region, tidshorisont.' },
+  { n: '2', title: 'Upplägg', body: 'Vi sätter upp ett flöde anpassat till er organisation och era volymer.' },
+  { n: '3', title: 'Matchning', body: 'Vi kontrollerar kompetens, tillgänglighet och dokument mot poolen.' },
+  { n: '4', title: 'Förslag', body: 'Ni får ett konkret förslag på medarbetare för uppdraget.' },
+  { n: '5', title: 'Uppstart', body: 'Uppdraget startar med en tydlig kontaktpunkt hos DriverNord Bemanning.' },
+  { n: '6', title: 'Uppföljning', body: 'Vi följer upp under uppdraget — ni är aldrig utan en kontaktperson.' },
 ];
 
 function OperationalProcess() {
@@ -320,7 +325,7 @@ function OperationalProcess() {
       <div className="max-w-5xl mx-auto px-5 py-20 md:py-24">
         <Eyebrow>Processen</Eyebrow>
         <h2 className="text-2xl md:text-3xl font-bold text-white mb-12">
-          Från kontakt till kandidat.
+          Från behov till bemannat uppdrag.
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {PROCESS_STEPS.map((step) => (
@@ -354,7 +359,7 @@ function MidCTA() {
         </div>
         <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
           <a
-            href="mailto:hej@drivernord.com"
+            href="mailto:hej@drivernord.com?subject=Bemanningsbehov"
             className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-6 py-3 rounded-lg transition-colors text-center"
           >
             Skicka ett mail
@@ -376,23 +381,23 @@ function MidCTA() {
 const FAQ_ITEMS = [
   {
     q: 'Hur snabbt kan vi komma igång?',
-    a: 'Vanligtvis inom en vecka från första kontakt. Vi sätter upp flödet, testar intaget och börjar ta in profiler.',
+    a: 'Det beror på vilken profil ni behöver och vad som finns tillgängligt just nu. Vi återkommer snabbt och är tydliga med vad som är realistiskt utifrån er förfrågan.',
   },
   {
     q: 'Vad kostar det?',
-    a: 'Vi har inget fast abonnemang — kostnaden beror på volym och upplägg. Kontakta oss så ger vi ett konkret förslag.',
+    a: 'Vi har inget fast abonnemang — kostnaden beror på roll, volym och uppdragslängd. Kontakta oss så ger vi ett konkret förslag.',
   },
   {
-    q: 'Vilka körkort och transporter täcker ni?',
-    a: 'Primärt C, CE och D med YKB. Vi täcker tunga transporter — lång- och regionaltransport, distribution, kyl, bygg och bud.',
+    q: 'Vilka roller täcker ni?',
+    a: 'Lagerbemanning (lagerarbetare, terminalpersonal, orderplockare, truckförare), förarbemanning (C, CE med YKB) och logistikbemanning (enklare logistikstöd).',
   },
   {
-    q: 'Kan vi se profiler innan vi bestämmer oss?',
-    a: 'Ja. Vi kan visa ett anonymiserat urval av profiler från relevant region och körkortsklass så att du ser vad du får.',
+    q: 'Hur kontrolleras medarbetarna?',
+    a: 'Vi kontrollerar relevanta dokument (till exempel körkort, YKB, truckkort) och tillgänglighet innan en medarbetare föreslås för ett uppdrag.',
   },
   {
     q: 'Hur hanteras GDPR?',
-    a: 'Chaufförerna registrerar sig frivilligt och samtycker till att deras uppgifter används för matchning. Vi delar inte data med tredje part. Du kan be om radering av specifika profiler när som helst.',
+    a: 'Medarbetare registrerar sig frivilligt och samtycker till att deras uppgifter används för bemanning och matchning. Vi delar inte data med tredje part utöver vad uppdraget kräver.',
   },
 ];
 
@@ -425,13 +430,13 @@ function FinalCTA() {
       <div className="max-w-3xl mx-auto px-5 py-20 md:py-24 text-center">
         <Eyebrow>Kom igång</Eyebrow>
         <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-          Berätta om dina behov.
+          Berätta om era behov.
         </h2>
         <p className="text-blue-300 text-base leading-relaxed mb-8 max-w-lg mx-auto">
           Vi svarar snabbt och ger ett konkret förslag utan krångel. Inget abonnemang,
-          inget CRM — bara ett samtal om vad ni behöver.
+          bara ett samtal om vad ni behöver.
         </p>
-        <PrimaryButton href="mailto:hej@drivernord.com" label="Skicka ett mail till hej@drivernord.com" />
+        <PrimaryButton href="mailto:hej@drivernord.com?subject=Bemanningsbehov" label="Skicka ett mail till hej@drivernord.com" />
         <p className="mt-5 text-blue-400 text-sm">
           Eller ring direkt:{' '}
           <a href="tel:+46709385267" className="font-semibold text-white hover:text-blue-200 transition-colors">
@@ -470,7 +475,7 @@ export default function CompanyPage() {
         <Hero />
         <TrustStrip />
         <HowItWorks />
-        <DriverCategories />
+        <ServiceLines />
         <WhyDriverNord />
         <TrustVisual />
         <OperationalProcess />

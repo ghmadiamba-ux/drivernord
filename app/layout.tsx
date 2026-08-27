@@ -5,8 +5,8 @@ import { CookieConsentBanner } from '@/components/consent/CookieConsentBanner';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://drivernord.com'),
-  title: 'Driver Registration',
-  description: 'Register as a professional driver in Sweden',
+  title: 'DriverNord Bemanning',
+  description: 'Bemanning för transport och logistik i Stockholm/Mälardalen — lager, terminal och förare.',
 };
 
 export const viewport: Viewport = {

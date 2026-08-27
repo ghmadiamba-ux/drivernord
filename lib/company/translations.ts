@@ -308,9 +308,9 @@ export const translations: Translations = {
     'diff.eyebrow': 'Comparison',
     'diff.headline': 'Structural difference from traditional staffing',
     'diff.subtext':
-      'Not a job board. Not a staffing agency. Not an ATS. An autonomous matching infrastructure for licensed transport drivers.',
+      'Not a job board. Not an ATS. A staffing company for transport and logistics, built on a controlled digital intake and matching process.',
     'diff.left.header': 'Traditional staffing',
-    'diff.right.header': 'DriverNord',
+    'diff.right.header': 'DriverNord Bemanning',
     'diff.row1.label': 'Credential collection',
     'diff.row1.left': 'Phone call during office hours',
     'diff.row1.right': 'Digital structured intake — 24/7, under 2 minutes',

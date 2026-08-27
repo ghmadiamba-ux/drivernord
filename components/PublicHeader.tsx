@@ -8,10 +8,11 @@ export function PublicHeader() {
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-blue-100">
-      <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between">
+      <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between gap-4">
         {/* Logo */}
-        <Link href="/chaufforer" className="text-blue-900 font-bold text-lg flex-shrink-0">
-          DriverNord
+        <Link href="/" className="flex-shrink-0 leading-tight whitespace-nowrap">
+          <span className="text-blue-900 font-bold text-base">DriverNord</span>{' '}
+          <span className="text-blue-600 font-semibold text-base">Bemanning</span>
         </Link>
 
         {/* Desktop nav */}
@@ -19,11 +20,14 @@ export function PublicHeader() {
           <Link href="/company" className="text-gray-600 hover:text-blue-900 transition-colors">
             För företag
           </Link>
-          <Link href="/chaufforer" className="text-gray-600 hover:text-blue-900 transition-colors">
-            För chaufförer
+          <Link href="/#lagerbemanning" className="text-gray-600 hover:text-blue-900 transition-colors">
+            Lagerbemanning
           </Link>
-          <Link href="/about" className="text-gray-600 hover:text-blue-900 transition-colors">
-            Om oss
+          <Link href="/#forarbemanning" className="text-gray-600 hover:text-blue-900 transition-colors">
+            Förarbemanning
+          </Link>
+          <Link href="/chaufforer" className="text-gray-600 hover:text-blue-900 transition-colors">
+            För arbetstagare
           </Link>
           <Link href="/contact" className="text-gray-600 hover:text-blue-900 transition-colors">
             Kontakt
@@ -68,18 +72,25 @@ export function PublicHeader() {
             För företag
           </Link>
           <Link
+            href="/#lagerbemanning"
+            className="text-sm text-gray-700 hover:text-blue-900 py-3 border-b border-gray-100 transition-colors"
+            onClick={() => setOpen(false)}
+          >
+            Lagerbemanning
+          </Link>
+          <Link
+            href="/#forarbemanning"
+            className="text-sm text-gray-700 hover:text-blue-900 py-3 border-b border-gray-100 transition-colors"
+            onClick={() => setOpen(false)}
+          >
+            Förarbemanning
+          </Link>
+          <Link
             href="/chaufforer"
             className="text-sm text-gray-700 hover:text-blue-900 py-3 border-b border-gray-100 transition-colors"
             onClick={() => setOpen(false)}
           >
-            För chaufförer
-          </Link>
-          <Link
-            href="/about"
-            className="text-sm text-gray-700 hover:text-blue-900 py-3 border-b border-gray-100 transition-colors"
-            onClick={() => setOpen(false)}
-          >
-            Om oss
+            För arbetstagare
           </Link>
           <Link
             href="/contact"

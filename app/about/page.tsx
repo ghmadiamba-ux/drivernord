@@ -5,21 +5,21 @@ import { LegalFooter } from '@/components/LegalFooter';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://drivernord.com'),
-  title: 'Om DriverNord — matchningstjänst för chaufförer och transportföretag',
+  title: 'Om DriverNord Bemanning — bemanning för transport, lager och logistik',
   description:
-    'DriverNord matchar professionella CE-, C- och D-chaufförer med transportföretag i Sverige. Ingen bemanning — direktkontakt med kvalificerade förare med giltig YKB.',
+    'DriverNord Bemanning bemannar transport-, lager- och logistikföretag i Sverige med kontrollerade och uppdragsklara medarbetare — lagerarbetare, truckförare och C/CE-förare.',
   openGraph: {
-    title: 'Om DriverNord — matchningstjänst för chaufförer och transportföretag',
-    description: 'DriverNord matchar professionella CE-, C- och D-chaufförer med transportföretag i Sverige. Ingen bemanning — direktkontakt med kvalificerade förare med giltig YKB.',
+    title: 'Om DriverNord Bemanning — bemanning för transport, lager och logistik',
+    description: 'DriverNord Bemanning bemannar transport-, lager- och logistikföretag i Sverige med kontrollerade och uppdragsklara medarbetare.',
     url: 'https://drivernord.com/about',
-    siteName: 'DriverNord',
+    siteName: 'DriverNord Bemanning',
     locale: 'sv_SE',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Om DriverNord — matchningstjänst för chaufförer och transportföretag',
-    description: 'DriverNord matchar professionella CE-, C- och D-chaufförer med transportföretag i Sverige. Ingen bemanning — direktkontakt med kvalificerade förare med giltig YKB.',
+    title: 'Om DriverNord Bemanning — bemanning för transport, lager och logistik',
+    description: 'DriverNord Bemanning bemannar transport-, lager- och logistikföretag i Sverige med kontrollerade och uppdragsklara medarbetare.',
   },
 };
 
@@ -37,11 +37,12 @@ export default function AboutPage() {
               Om oss
             </p>
             <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-6">
-              Vi förenklar rekrytering av yrkeschaufförer.
+              Vi förenklar bemanning för transport och logistik.
             </h1>
             <p className="text-blue-200 text-base md:text-lg leading-relaxed max-w-xl">
-              DriverNord är en svensk matchningstjänst för professionella chaufförer och
-              transportföretag. Vi samlar in och kvalificerar chaufförsprofiler — utan CV-krångel.
+              DriverNord Bemanning är ett svenskt bemanningsföretag för transport- och
+              logistiksektorn. Vi samlar in och kvalificerar medarbetare — från lagerarbetare
+              och truckförare till C/CE-förare — utan CV-krångel.
             </p>
           </div>
         </section>
@@ -52,17 +53,18 @@ export default function AboutPage() {
             <h2 className="text-xl font-bold text-blue-900 mb-6">Vad vi gör</h2>
             <div className="space-y-5 text-gray-700 text-base leading-relaxed">
               <p>
-                Via ett kort frågeflöde samlar DriverNord in det som faktiskt spelar roll för en
-                rekryterare inom tung transport: körkortsklass (C, CE, D), YKB-status, typ av
-                körning, region och tillgänglighet. Ingen cv-uppladdning. Inget konto.
+                Via ett kort frågeflöde samlar DriverNord Bemanning in det som faktiskt spelar
+                roll för ett uppdrag: roll (lager, terminal, förare), körkortsklass eller
+                truckkort, YKB-status där relevant, region och tillgänglighet. Ingen
+                cv-uppladdning. Inget konto.
               </p>
               <p>
-                Transportföretag som söker kvalificerade chaufförer kan ta del av strukturerade
-                profiler via DriverNords plattform. Varje profil är klassificerad och klar för
-                direktkontakt.
+                Transport-, lager- och logistikföretag som behöver täcka ett personalbehov kan
+                få kontrollerade och uppdragsklara medarbetare via DriverNord Bemanning. Varje
+                profil är klassificerad och kontrollerad innan den föreslås.
               </p>
               <p>
-                Vi är ett litet team under aktiv utveckling. Tjänsten expanderar löpande.
+                Vi är ett litet team under aktiv utveckling. Verksamheten expanderar löpande.
               </p>
             </div>
           </div>
@@ -123,8 +125,9 @@ export default function AboutPage() {
           <div className="max-w-3xl mx-auto px-5 py-16 md:py-20">
             <h2 className="text-xl font-bold text-blue-900 mb-4">Status</h2>
             <p className="text-gray-600 text-base leading-relaxed mb-8">
-              DriverNord är under aktiv utveckling. Vi tar in chaufförsprofiler, expanderar
-              geografiskt och förbättrar matchningsflödet kontinuerligt.
+              DriverNord Bemanning är under aktiv utveckling. Vi bygger vår medarbetarpool inom
+              lager och transport, expanderar geografiskt och förbättrar bemannings- och
+              matchningsflödet kontinuerligt.
             </p>
             <div className="bg-blue-50 border border-blue-100 rounded-xl px-6 py-5">
               <p className="text-blue-900 font-semibold text-sm mb-2">Kontakt</p>
