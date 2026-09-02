@@ -137,6 +137,23 @@ function MobileHeroImage() {
   );
 }
 
+// ─── Lager cross-link ─────────────────────────────────────────────────────────
+
+function LagerCrossLink() {
+  return (
+    <section className="bg-blue-50 border-b border-blue-100">
+      <div className="max-w-5xl mx-auto px-5 py-4 text-center">
+        <p className="text-blue-900 text-sm">
+          Söker du lagerjobb, plock eller pack?{' '}
+          <Link href="/lagerjobb" className="text-blue-600 hover:underline font-medium">
+            Läs mer här
+          </Link>
+        </p>
+      </div>
+    </section>
+  );
+}
+
 // ─── Trust strip ──────────────────────────────────────────────────────────────
 
 const TRUST_ITEMS = [
@@ -385,6 +402,7 @@ export default function ChaufflorerPage() {
       <PublicHeader />
       <main className="flex-1">
         <Hero />
+        <LagerCrossLink />
         <MobileHeroImage />
         <TrustStrip />
         <HowItWorks />

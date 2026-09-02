@@ -138,6 +138,27 @@ function TrustStrip() {
   );
 }
 
+// ─── DriverNord Lagerlucka ────────────────────────────────────────────────────
+
+function LagerluckaSection() {
+  return (
+    <section id="lagerlucka" className="bg-blue-50 border-y border-blue-100 scroll-mt-20">
+      <div className="max-w-5xl mx-auto px-5 py-16 md:py-20">
+        <Eyebrow>Första lanseringsfokus</Eyebrow>
+        <h2 className="text-2xl md:text-3xl font-bold text-blue-900 mb-6">
+          DriverNord Lagerlucka — testa oss på en konkret lucka
+        </h2>
+        <p className="text-gray-600 text-base leading-relaxed mb-8 max-w-2xl">
+          För företag som behöver täcka korta luckor inom plock, pack, lastning, lossning eller
+          enklare terminalarbete erbjuder vi ett första pilotupplägg: ett konkret behov, ett
+          snabbt besked och möjlighet att testa DriverNord Bemanning på ett begränsat uppdrag.
+        </p>
+        <PrimaryButton href="/lagerlucka" label="Har ni en lagerlucka?" />
+      </div>
+    </section>
+  );
+}
+
 // ─── How it works ─────────────────────────────────────────────────────────────
 
 const HOW_STEPS = [
@@ -474,6 +495,7 @@ export default function CompanyPage() {
       <main className="flex-1">
         <Hero />
         <TrustStrip />
+        <LagerluckaSection />
         <HowItWorks />
         <ServiceLines />
         <WhyDriverNord />

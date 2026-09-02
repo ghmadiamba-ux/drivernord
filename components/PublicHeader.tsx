@@ -20,11 +20,8 @@ export function PublicHeader() {
           <Link href="/company" className="text-gray-600 hover:text-blue-900 transition-colors">
             För företag
           </Link>
-          <Link href="/#lagerbemanning" className="text-gray-600 hover:text-blue-900 transition-colors">
-            Lagerbemanning
-          </Link>
-          <Link href="/#forarbemanning" className="text-gray-600 hover:text-blue-900 transition-colors">
-            Förarbemanning
+          <Link href="/lagerlucka" className="text-gray-600 hover:text-blue-900 transition-colors">
+            Lagerlucka
           </Link>
           <Link href="/chaufforer" className="text-gray-600 hover:text-blue-900 transition-colors">
             För arbetstagare
@@ -37,7 +34,7 @@ export function PublicHeader() {
         {/* CTA + hamburger */}
         <div className="flex items-center gap-2">
           <Link
-            href="/chat"
+            href="/chaufforer"
             className="text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors flex-shrink-0"
           >
             Registrera dig
@@ -72,18 +69,11 @@ export function PublicHeader() {
             För företag
           </Link>
           <Link
-            href="/#lagerbemanning"
+            href="/lagerlucka"
             className="text-sm text-gray-700 hover:text-blue-900 py-3 border-b border-gray-100 transition-colors"
             onClick={() => setOpen(false)}
           >
-            Lagerbemanning
-          </Link>
-          <Link
-            href="/#forarbemanning"
-            className="text-sm text-gray-700 hover:text-blue-900 py-3 border-b border-gray-100 transition-colors"
-            onClick={() => setOpen(false)}
-          >
-            Förarbemanning
+            Lagerlucka
           </Link>
           <Link
             href="/chaufforer"
@@ -91,6 +81,13 @@ export function PublicHeader() {
             onClick={() => setOpen(false)}
           >
             För arbetstagare
+          </Link>
+          <Link
+            href="/lagerjobb"
+            className="text-sm text-gray-700 hover:text-blue-900 py-3 border-b border-gray-100 transition-colors"
+            onClick={() => setOpen(false)}
+          >
+            Lagerjobb
           </Link>
           <Link
             href="/contact"

@@ -60,7 +60,7 @@ function CTAButtons() {
         Beskriv ert bemanningsbehov
       </a>
       <Link
-        href="/chat"
+        href="/chaufforer"
         className="inline-block bg-transparent border border-blue-400 text-blue-100
                    hover:bg-blue-800 font-semibold text-base px-7 py-3.5 rounded-lg
                    transition-colors"
@@ -92,6 +92,34 @@ function Hero() {
           lagerarbetare och truckförare till C/CE-förare.
         </p>
         <CTAButtons />
+      </div>
+    </section>
+  );
+}
+
+// ─── Launch focus ─────────────────────────────────────────────────────────────
+
+function LaunchFocus() {
+  return (
+    <section className="bg-white">
+      <div className="max-w-3xl mx-auto px-5 py-16 md:py-20 text-center">
+        <Eyebrow>Första lanseringsfokus: lagerluckor</Eyebrow>
+        <h2 className="text-2xl md:text-3xl font-bold text-blue-900 mb-6">
+          DriverNord Lagerlucka
+        </h2>
+        <p className="text-gray-600 text-base md:text-lg leading-relaxed mb-8 max-w-2xl mx-auto">
+          Vi börjar där behovet ofta är mest konkret: korta luckor inom lager, plock, pack,
+          lastning, lossning och enklare terminalarbete. Därifrån bygger DriverNord Bemanning
+          steg för steg mot hela flödet — från lagergolv till förarplats.
+        </p>
+        <Link
+          href="/lagerlucka"
+          className="inline-block bg-blue-600 hover:bg-blue-700 active:bg-blue-800
+                     text-white font-semibold text-base px-7 py-3.5 rounded-lg
+                     transition-colors shadow-sm"
+        >
+          Har ni en lagerlucka?
+        </Link>
       </div>
     </section>
   );
@@ -260,6 +288,7 @@ export default function HomePage() {
       <PublicHeader />
       <main className="flex-1">
         <Hero />
+        <LaunchFocus />
         <TrustStrip />
         <ValuePropositions />
         <ServiceLines />

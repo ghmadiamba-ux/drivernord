@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'DriverNord — Hitta kvalificerade chaufförer snabbare',
+  title: 'DriverNord Bemanning — bemanning för transport och logistik',
   description:
-    'DriverNord samlar in och kvalificerar chaufförsprofiler med körkort C/CE/D och YKB. Du får ett strukturerat underlag — redo för kontakt.',
+    'DriverNord Bemanning hjälper transport-, lager- och logistikföretag i Stockholm/Mälardalen att snabbt täcka tillfälliga personalbehov — med första lanseringsfokus på DriverNord Lagerlucka.',
 }
 
 export default function CompanyLayout({ children }: { children: React.ReactNode }) {

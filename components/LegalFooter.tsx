@@ -25,6 +25,11 @@ export function LegalFooter() {
             </p>
             <ul className="space-y-2">
               <li>
+                <Link href="/lagerlucka" className="text-blue-400 hover:text-white text-sm transition-colors">
+                  Lagerlucka
+                </Link>
+              </li>
+              <li>
                 <Link href="/#lagerbemanning" className="text-blue-400 hover:text-white text-sm transition-colors">
                   Lagerbemanning
                 </Link>
@@ -49,13 +54,18 @@ export function LegalFooter() {
             </p>
             <ul className="space-y-2">
               <li>
+                <Link href="/lagerjobb" className="text-blue-400 hover:text-white text-sm transition-colors">
+                  Lagerjobb
+                </Link>
+              </li>
+              <li>
                 <Link href="/chaufforer" className="text-blue-400 hover:text-white text-sm transition-colors">
                   För arbetstagare
                 </Link>
               </li>
               <li>
                 <Link href="/chat" className="text-blue-400 hover:text-white text-sm transition-colors">
-                  Registrera dig
+                  Chaufför — registrera dig
                 </Link>
               </li>
               <li>

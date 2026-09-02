@@ -209,6 +209,15 @@ export default function AiAgenterPage() {
                 </span>
               ))}
             </div>
+            <p className="text-sm text-gray-500 mt-6 max-w-2xl">
+              Det här beskriver den tekniska matchningsmotorn för chaufförsspåret (CE/C/D).
+              Lagerspåret (plock, pack, lastning/lossning, enklare terminalarbete) hanteras idag
+              manuellt — se{' '}
+              <Link href="/lagerlucka" className="text-blue-600 hover:underline">
+                DriverNord Lagerlucka
+              </Link>
+              .
+            </p>
           </div>
         </section>
 
